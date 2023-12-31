@@ -251,7 +251,7 @@ Hadoop主要有以下三种安装和运行方式：
 # 3. 分布式文件系统HDFS
 
 
-## 3.1 分布式文件系统
+## 3.1. 分布式文件系统
 
 分布式文件系统目前主要有以下几种：
 
@@ -324,7 +324,13 @@ HDFS 提供了多种读写文件的方式，主要包括以下几种：
 
 Python 的 `hdfs`库，可以用来读写 HDFS 上的文件，提供了一些函数和方法，可以用来执行常见的HDFS操作，如读写文件、创建和删除目录等。
 
-以下是一个使用`hdfs`库的例子：
+首先，确保已经安装了 `hdfs`。如果没有，可以使用 pip 安装：
+
+```bash
+pip install hdfs
+```
+
+然后，可以使用以下 Python 代码来操作 `hdfs`：
 
 ```python
 from hdfs import InsecureClient
@@ -347,10 +353,136 @@ with client.read('/user/hdfs/dir/localfile.txt') as reader:
 
 
 # 4. 分布式数据库HBase
-## 4.1.	HBase的适用场景※
-## 4.2.	HBase的安装与使用
 
+## 4.1. 分布式数据库
 
+数据库是一个组织数据的系统，它允许用户存储、检索、更新和管理数据。数据库通常由一系列相关的数据表组成，每个数据表包含一组数据记录。
+
+分布式数据库是一种数据库管理系统，它将数据分布在多个物理位置（可能是多个网络连接的计算机）上。
+
+分布式数据库可以提高数据的可用性和可靠性，因为数据在多个节点上有备份。此外，分布式数据库还可以提高查询和事务处理的性能，因为这些操作可以在多个节点上并行执行。
+
+主要的分布式数据库包括：
+
+1. **Google Cloud Spanner**：Google Cloud Spanner 是 Google 的全球分布式关系数据库服务，提供了事务一致性和 SQL 语义。
+
+2. **HBase**：HBase 是 Hadoop 生态系统的一部分，它是一个开源的非关系型分布式数据库，设计用于大规模数据存储。
+
+3. **CouchDB**：Apache CouchDB 是一个开源的分布式数据库，设计用于云计算环境。
+
+4. **CockroachDB**：CockroachDB 是一个开源的分布式 SQL 数据库，设计用于构建全球、可扩展的云服务。
+
+5. **Cassandra**：Apache Cassandra 是一个开源的分布式数据库，设计用于处理大量数据跨多个商品服务器。
+
+由于本课程以Hadoop为基础，这里采用HBase。
+
+## 4.2. 数据的结构化程度
+
+结构化数据、非结构化数据和半结构化数据是描述数据组织方式的术语：
+
+1. **结构化数据**：这种数据类型有预定义的数据模型，或者说，有严格的组织方式。它们通常存储在关系数据库中，如 SQL 数据库。例子包括人员名单、库存记录等。
+
+2. **非结构化数据**：这种数据没有预定义的模型，也没有组织方式。这种数据类型包括电子邮件、视频、图片、网页内容等。
+
+3. **半结构化数据**：这种数据介于结构化和非结构化数据之间。它们没有固定的格式，但有某种形式的组织，如标签或其他标记，以区分不同的元素。例子包括 JSON、XML、HTML 等。
+
+至于数据的结构化程度是否有定量衡量指标，目前并没有公认的定量衡量标准。数据的结构化程度通常是根据数据的组织和格式化程度来定性描述的。例如，如果数据可以很容易地存储在表格中，那么它通常被认为是结构化的。如果数据是文本、图像或音频等形式，那么它通常被认为是非结构化的。如果数据有某种形式的标记或元数据，但不符合严格的表格结构，那么它通常被认为是半结构化的。
+
+## 4.3.	HBase的适用场景※
+
+HBase 的适用场景：
+
+1. **大数据存储**：HBase 是一个宽列式存储的数据库，适合存储非结构化和半结构化的数据，因为列式存储允许数据模式在行之间有所不同，并且可以有效地存储和查询大量的稀疏数据。
+
+2. **实时查询**：HBase 提供了低延迟的随机读写能力，因此它适合需要实时查询的应用。
+
+3. **时间序列数据**：HBase 的数据模型和架构使得它非常适合存储时间序列数据，例如股票价格、气象数据等。
+
+4. **内容管理系统**：HBase 可以用于构建内容管理系统或搜索引擎，因为它可以存储大量的文档或网页，并提供快速的全文搜索能力。
+
+5. **日志存储和分析**：HBase 可以用于存储和分析大量的日志数据，例如网络日志、系统日志等。
+
+6. **社交网络数据**：HBase 可以用于存储和分析社交网络数据，例如用户的朋友关系、用户的行为数据等。
+
+## 4.4.	HBase的安装
+
+HBase 的安装过程通常包括以下步骤：
+
+1. **安装 Java**：HBase 需要 Java 运行环境，因此首先需要在系统上安装 Java。
+
+2. **安装 Hadoop**：HBase 是 Hadoop 的一部分，因此需要在系统上安装 Hadoop。这一步上一单元已经完成了。。
+
+3. **下载和解压 HBase**：可以从 Apache HBase 的官方网站下载最新的 HBase 发行版。然后，使用以下命令解压下载的 HBase 压缩文件：
+
+```bash
+tar xzf hbase-x.y.z.tar.gz
+```
+
+4. **配置 HBase**：需要编辑 HBase 的配置文件（`hbase-site.xml`），设置 HBase 的运行模式（独立模式、伪分布式模式或完全分布式模式）和 HBase 数据的存储路径等。
+
+5. **启动 HBase**：最后，可以使用 HBase 的启动脚本启动 HBase：
+
+```bash
+./bin/start-hbase.sh
+```
+
+以上是在单个节点上安装 HBase 的基本步骤。在生产环境中，可能需要在多个节点上安装 HBase，以构建一个分布式的 HBase 集群。
+
+## 4.5. HBase的使用
+
+安装好的 HBase 有多种使用方式：
+
+1. **HBase Shell**：HBase 提供了一个交互式的 shell，可以使用它来执行各种 HBase 命令，如创建表、插入数据、查询数据等。可以通过运行 `./bin/hbase shell` 来启动 HBase shell。
+
+2. **Java API**：HBase 提供了一个丰富的 Java API，可以使用它来编写 Java 程序操作 HBase。例如，可以使用 HTable 类来操作 HBase 表，使用 Put 类来插入数据，使用 Get 类来查询数据等。
+
+3. **REST API**：HBase 提供了一个 REST API，可以使用任何支持 HTTP 的编程语言通过 HTTP 请求来操作 HBase。
+
+4. **Thrift API**：HBase 还提供了一个 Thrift API，可以使用任何支持 Thrift 的编程语言来操作 HBase。
+
+5. **JDBC**：HBase 提供了一个 JDBC 驱动，可以使用 JDBC 来操作 HBase。这使得可以使用 SQL 语言来查询 HBase 数据，也可以使用任何支持 JDBC 的工具或框架来操作 HBase。
+
+6. **HBase Admin UI**：HBase 提供了一个 Web UI，可以通过浏览器访问它来查看 HBase 的状态和性能指标，以及执行一些管理操作。
+
+## 4.6. HBase操作的Python演示
+
+要在 Python 中使用 HBase，可以使用 `happybase` 库。以下是一个简单的示例，展示如何连接到 HBase，创建表，插入数据，然后查询数据：
+
+首先，确保已经安装了 `happybase`。如果没有，可以使用 pip 安装：
+
+```bash
+pip install happybase
+```
+
+然后，可以使用以下 Python 代码来操作 HBase：
+
+```python
+import happybase
+
+# 连接到 HBase
+connection = happybase.Connection('localhost')
+
+# 创建表
+table_name = 'my_table'
+families = {
+    'cf1': dict(max_versions=10),
+    'cf2': dict(max_versions=1, block_cache_enabled=False),
+    'cf3': dict(),  # 使用默认值
+}
+connection.create_table(table_name, families)
+
+# 获取表
+table = connection.table(table_name)
+
+# 插入数据
+table.put('row-key1', {'cf1:col1': 'value1', 'cf2:col2': 'value2'})
+
+# 查询数据
+row = table.row('row-key1')
+print(row['cf1:col1'])  # 输出: value1
+```
+
+请注意，这个示例假设 HBase Thrift 服务正在本地运行，并且监听的是默认的端口（9090）。如果 HBase Thrift 服务在其他地方运行，或者使用的是其他端口，需要在创建 `happybase.Connection` 时提供正确的主机名和端口号。
 
 
 # 5. 分布式数据仓库Hive
