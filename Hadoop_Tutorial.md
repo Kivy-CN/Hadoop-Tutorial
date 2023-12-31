@@ -682,17 +682,230 @@ python wordcount.py -r hadoop hdfs:///path/to/your/input.txt
 
 运行这个命令后，mrjob 会自动将 Python 脚本转换为一个 Hadoop Streaming 任务，并在 Hadoop 集群上运行这个任务。结果会被输出到标准输出。
 
-
-
 # 7. 分布式计算框架Spark
-## 7.1.	Spark的发展历史和适用场景※
-## 7.2.	Spark的安装与使用
 
+## 7.1.	Spark的发展历史
 
+Apache Spark 是一种大规模数据处理的开源集群计算系统，它最初是由加州大学伯克利分校的 AMPLab（算法机器人学习实验室）在 2009 年开发的。
+
+Spark 的主要发展历程：
+
+1. **2009年**：Spark 项目在加州大学伯克利分校的 AMPLab 启动。
+
+2. **2010年**：Spark 在 USENIX NSDI 大会上公开发布。
+
+3. **2012年**：Spark 成为 Apache 基金会的孵化项目。
+
+4. **2013年**：Spark 成为 Apache 基金会的顶级项目。
+
+5. **2014年**：Spark 1.0 发布，这是 Spark 的第一个大版本。
+
+6. **2015年**：Spark 1.6 发布，这是 Spark 1.x 系列的最后一个版本。
+
+7. **2016年**：Spark 2.0 发布，这个版本引入了一些重要的新特性，如 Structured Streaming、DataFrame API 和 Dataset API。
+
+8. **2018年**：Spark 2.4 发布，这是 Spark 2.x 系列的最后一个版本。
+
+9. **2020年**：Spark 3.0 发布，这个版本进一步改进了 Spark 的性能和易用性。
+
+至今，Spark 已经成为大数据处理领域最流行的开源项目之一，被广泛应用于数据挖掘、机器学习、图计算等多种场景。
+
+## 7.2. Spark的适用场景
+
+Apache Spark 适用于以下几种场景：
+
+1. **迭代式算法**：Spark 的弹性分布式数据集（RDD）可以在内存中缓存数据，这使得 Spark 非常适合于需要多次迭代的算法，如机器学习和图算法。
+
+2. **交互式数据挖掘和查询**：Spark 提供了强大的交互式 Python 和 Scala shell，可以方便地进行数据挖掘和查询。
+
+3. **流处理**：Spark Streaming 可以处理实时数据流，并提供了与批处理相同的 API，使得开发者可以在同一套代码上进行批处理和流处理。
+
+4. **图处理**：GraphX 是 Spark 的一个图计算库，提供了一套灵活的图计算 API。
+
+与 Hadoop 相比，Spark 有以下优势：
+
+1. **速度**：Spark 能够将数据缓存到内存中，这使得 Spark 在处理迭代式算法时比 Hadoop MapReduce 快很多。
+
+2. **易用性**：Spark 提供了丰富的高级 API，包括 Java、Scala、Python 和 R，以及一套强大的交互式查询工具。
+
+3. **灵活性**：Spark 支持批处理、交互式查询、流处理和机器学习等多种计算模式。
+
+4. **容错性**：Spark 的 RDD 提供了一种高效的容错机制。
+
+## 7.3.	Spark的安装
+
+安装 Spark 的过程可以分为以下几个步骤：
+
+1. **下载 Spark**：首先，需要从 Spark 的官方网站下载最新的 Spark 发行版。可以选择预编译的版本，这样可以省去自己编译的步骤。
+
+```bash
+wget https://downloads.apache.org/spark/spark-3.1.2/spark-3.1.2-bin-hadoop3.2.tgz
+```
+
+2. **解压 Spark**：下载完成后，需要解压下载的文件。
+
+```bash
+tar xvf spark-3.1.2-bin-hadoop3.2.tgz
+```
+
+3. **设置环境变量**：为了方便使用 Spark，可以将 Spark 的 bin 目录添加到 PATH 环境变量中。还需要设置 `SPARK_HOME` 环境变量，指向 Spark 安装目录。
+
+```bash
+export SPARK_HOME=/path/to/spark-3.1.2-bin-hadoop3.2
+export PATH=$PATH:$SPARK_HOME/bin
+```
+
+4. **运行 Spark**：现在，可以运行 Spark 的 shell 了。例如，可以运行 Spark 的 Python shell：
+
+```bash
+pyspark
+```
+
+以上步骤是在单机上安装 Spark 的基本步骤。如果想在集群上安装 Spark，还需要配置 Spark 的集群管理器，例如 Standalone、Mesos 或 YARN。
+
+请注意，运行 Spark 还需要 Java 环境，所以在安装 Spark 之前，需要确保机器上已经安装了 Java。
+
+## 7.4. Spark的使用
+
+在 Python 中使用 Spark，需要使用 PySpark 库。以下是一个简单的例子，这个例子使用 Spark 读取一个文本文件，然后计算文件中每个单词的出现次数：
+
+```python
+from pyspark import SparkContext, SparkConf
+
+# 创建 SparkConf 和 SparkContext
+conf = SparkConf().setAppName("wordCountApp")
+sc = SparkContext(conf=conf)
+
+# 读取输入文件
+text_file = sc.textFile("hdfs://localhost:9000/user/hadoop/input.txt")
+
+# 使用 flatMap 分割行为单词，然后使用 map 将每个单词映射为一个 (word, 1) 对，最后使用 reduceByKey 对所有的 (word, 1) 对进行合并
+counts = text_file.flatMap(lambda line: line.split(" ")) \
+             .map(lambda word: (word, 1)) \
+             .reduceByKey(lambda a, b: a + b)
+
+# 将结果保存到输出文件
+counts.saveAsTextFile("hdfs://localhost:9000/user/hadoop/output.txt")
+```
+
+在这个例子中，首先创建了一个 SparkConf 对象和一个 SparkContext 对象。然后，使用 SparkContext 的 `textFile` 方法读取输入文件。接下来，使用 `flatMap`、`map` 和 `reduceByKey` 方法处理数据。最后，使用 `saveAsTextFile` 方法将结果保存到输出文件。
+
+请注意，需要将 "hdfs://localhost:9000/user/hadoop/input.txt" 和 "hdfs://localhost:9000/user/hadoop/output.txt" 替换为实际输入文件和输出文件的路径。
 
 
 # 8. 流计算以及Flink基础
-## 8.1.	Flink的发展历史和适用场景※
-## 8.2.	Flink的安装与使用※
+
+## 8.1. 批计算与流计算的区别
+
+批处理和流处理是两种不同的数据处理模型，它们的主要区别包括：
+
+1. **数据处理的时间性**：批处理通常在一段时间后处理收集到的数据，而流处理则是实时处理数据。这意味着批处理通常有一定的延迟，而流处理可以提供近实时的结果。
+
+2. **数据的有限性**：批处理处理的是有限的数据集，而流处理处理的是无限的数据流。这意味着批处理任务在处理完所有数据后就会结束，而流处理任务则可以持续不断地运行。
+
+3. **处理方式**：批处理通常一次处理所有数据，而流处理则是一次处理一个或一批数据。这意味着批处理通常需要更多的计算资源，但可以更好地利用数据局部性，而流处理则可以更快地处理数据，但可能需要更复杂的状态管理。
+
+4. **用途**：批处理通常用于离线分析，例如日志分析、报表生成等，而流处理则通常用于实时分析，例如实时监控、实时推荐等。
+
+请注意，这两种处理模型并不是互斥的，很多应用需要同时使用批处理和流处理。例如，一个应用可能使用流处理进行实时分析，同时使用批处理进行深度分析。
+
+
+
+## 8.2.	Flink的发展历史
+
+Apache Flink 是一个开源的流处理框架，它的发展历史如下：
+
+1. **2009年**：Flink 的前身 Stratosphere 项目在多个大学和研究机构的支持下开始。
+
+2. **2014年**：Stratosphere 项目被 Apache Software Foundation 接纳为孵化项目，并改名为 Flink。"Flink" 在德语中意为 "快速"，这反映了该项目的目标，即快速处理大数据。
+
+3. **2015年**：Flink 从 Apache 的孵化项目毕业，成为顶级项目。同年，Flink 社区发布了 Flink 的第一个稳定版本 0.10.0。
+
+4. **2016年以后**：Flink 社区持续发布新版本，不断增加新的特性，例如保存点（savepoints）、事件时间（event time）支持、CEP 库等。同时，Flink 的应用也越来越广泛，被越来越多的公司用于实时数据处理。
+
+Flink 的发展历史显示了它从一个学术项目发展为一个被广泛使用的大数据处理框架的过程。
+
+## 8.3. Flink的适用场景※
+
+Apache Flink 作为一个高效、灵活的大数据处理框架，适用于多种场景，包括但不限于：
+
+1. **实时数据流处理**：Flink 提供了强大的流处理能力，可以处理高速流入的数据，并提供近实时的结果。这对于需要实时分析和决策的应用非常重要，例如实时监控、实时推荐、实时风控等。
+
+2. **事件驱动应用**：Flink 支持事件时间处理和水印机制，可以处理乱序数据，非常适合事件驱动的应用，例如复杂事件处理、实时报警等。
+
+3. **批处理**：虽然 Flink 主要是一个流处理框架，但它也支持批处理。Flink 的 DataSet API 提供了一套完整的批处理能力，可以进行大规模的数据分析和计算。
+
+4. **机器学习和数据挖掘**：Flink 提供了一套机器学习库，可以进行大规模的机器学习和数据挖掘，例如分类、回归、聚类等。但这方面不如Spark的生态成熟。
+
+5. **ETL**：Flink 可以进行实时的 ETL（Extract, Transform, Load）操作，例如数据清洗、数据转换、数据加载等。
+
+
+## 8.4.	Flink的安装
+
+安装 Apache Flink 的过程可以分为以下几个步骤：
+
+1. **下载 Flink**：首先，需要从 Flink 的官方网站下载最新的 Flink 发行版。可以选择预编译的版本，这样可以省去自己编译的步骤。
+
+```bash
+wget https://www.apache.org/dyn/closer.lua/flink/flink-1.18.0/flink-1.18.0-bin-scala_2.12.tgz
+```
+
+2. **解压 Flink**：下载完成后，需要解压下载的文件。
+
+```bash
+tar xvf flink-1.18.0-bin-scala_2.12.tgz
+```
+
+3. **设置环境变量**：为了方便使用 Flink，可以将 Flink 的 bin 目录添加到 PATH 环境变量中。还需要设置 `FLINK_HOME` 环境变量，指向 Flink 安装目录。
+
+```bash
+export FLINK_HOME=/path/to/flink-1.18.0
+export PATH=$PATH:$FLINK_HOME/bin
+```
+
+4. **启动 Flink**：现在，可以启动 Flink 的本地模式了。
+
+```bash
+start-cluster.sh
+```
+
+以上步骤是在单机上安装 Flink 的基本步骤。如果想在集群上安装 Flink，还需要配置 Flink 的集群管理器，例如 Standalone、YARN 或 Kubernetes。
+
+请注意，运行 Flink 还需要 Java 环境，所以在安装 Flink 之前，需要确保机器上已经安装了 Java。
+
+## 8.5.	Flink的使用
+
+Apache Flink 主要使用 Java 或 Scala 进行编程，但也提供了 Python API，称为 PyFlink。
+
+Apache Flink 的开发团队在 2020 年宣布了他们计划逐步淘汰对 Scala API 的支持。因此，建议使用 Java 或 Python API 进行开发。
+
+以下是一个使用 PyFlink 的简单示例，该示例从一个集合中读取数据，然后计算每个元素的平方：
+
+```python
+from pyflink.dataset import ExecutionEnvironment
+from pyflink.table import BatchTableEnvironment, TableConfig
+
+# 创建 ExecutionEnvironment 和 BatchTableEnvironment
+env = ExecutionEnvironment.get_execution_environment()
+t_config = TableConfig()
+t_env = BatchTableEnvironment.create(env, t_config)
+
+# 创建一个从 1 到 100 的集合
+data = [i for i in range(1, 101)]
+ds = env.from_collection(data)
+
+# 计算每个元素的平方
+result = ds.map(lambda x: x**2)
+
+# 打印结果
+result.output()
+
+# 执行任务
+env.execute("Batch Job")
+```
+
+在这个示例中，首先创建了一个 ExecutionEnvironment 和一个 BatchTableEnvironment。然后，使用 `from_collection` 方法创建了一个 DataSet。接下来，使用 `map` 方法计算每个元素的平方。最后，使用 `output` 方法打印结果，并使用 `execute` 方法执行任务。
+
+请注意，这个示例需要在 Flink 的 Python 环境中运行。可以使用 `pip install apache-flink` 命令安装 PyFlink。
 
 
