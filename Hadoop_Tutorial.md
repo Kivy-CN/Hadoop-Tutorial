@@ -582,8 +582,105 @@ for result in cursor.fetchall():
 
 # 6. 分布式计算框架MapReduce
 ## 6.1.	MapReduce的发展历史※
-## 6.2.	MapReduce的应用场景
 
+MapReduce 是由 Google 的工程师在 2004 年首次提出的一种分布式计算模型，主要目标是简化大规模数据集上的计算。
+
+MapReduce 的发展历史的简要概述：
+
+1. **2004年**：Google 的工程师 Jeffrey Dean 和 Sanjay Ghemawat 发表了一篇名为 "MapReduce: Simplified Data Processing on Large Clusters" 的论文，首次提出了 MapReduce 模型。这个模型使得开发者可以在不了解分布式系统细节的情况下，进行大规模数据处理。
+
+2. **2006年**：Doug Cutting 和 Mike Cafarella 为了支持 Nutch（一个开源的网络搜索引擎项目）的扩展，开始开发 Hadoop，并将 MapReduce 作为 Hadoop 的核心组件。Hadoop 是一个开源的分布式计算框架，它使得 MapReduce 模型得以在更广泛的场景中使用。
+
+3. **2008年**：Yahoo 在其生产环境中部署了 Hadoop 和 MapReduce，这是 MapReduce 在大规模商业应用中的首次使用。
+
+4. **2010年以后**：随着大数据和分布式计算的发展，MapReduce 成为了处理大规模数据的重要工具。许多公司和组织，包括 Facebook、Twitter、LinkedIn 等，都在其数据处理流程中使用了 MapReduce。
+
+5. **现在**：MapReduce 的计算模型相对较为简单，不适合需要复杂迭代计算或实时处理的任务。Spark 提供了更为灵活的计算模型，支持复杂的迭代计算，而且通过内存计算可以大大提高计算速度。Flink 则提供了对实时流处理的原生支持，适合需要实时处理的任务。对于需要复杂迭代计算或实时处理的任务，Spark 和 Flink 通常是更好的选择。
+
+## 6.2. MapReduce的设计思想
+
+MapReduce 的中文翻译通常是“映射-归约”。其中，“Map”对应“映射”，“Reduce”对应“归约”。这两个词分别代表了 MapReduce 计算模型的两个主要阶段：Map 阶段和 Reduce 阶段。
+
+1. **Map 阶段**：在这个阶段，输入数据被分割成多个独立的块，然后每个块被分配给一个 Map 任务进行处理。Map 任务对输入数据进行处理，并生成一组中间键值对。
+
+2. **Reduce 阶段**：在这个阶段，所有的中间键值对被按键排序，然后分配给 Reduce 任务。Reduce 任务对每个键的所有值进行处理，并生成一组输出键值对。
+
+许多类型的计算都可以转换成 MapReduce 模型，例如排序、聚合、过滤、分组等。这些计算都可以通过 Map 阶段和 Reduce 阶段的组合来实现。
+
+然而，有些计算难以转换成 MapReduce 模型，或者转换后的效率不高。例如，需要多次迭代的计算（如图算法、机器学习算法等）就难以直接转换成 MapReduce 模型，因为 MapReduce 模型不直接支持迭代。虽然可以通过多次 MapReduce 任务来实现迭代，但这样会增加计算的复杂性和开销。此外，需要全局共享状态的计算也难以转换成 MapReduce 模型，因为 MapReduce 模型是基于数据的局部性的。
+
+## 6.3.	MapReduce的应用场景
+
+MapReduce 主要适用于以下几种场景：
+
+1. **大规模数据处理**：MapReduce 能够处理 PB 级别的数据，适合于大规模数据集的处理。
+
+2. **批处理**：MapReduce 适合于批处理任务，例如日志分析、数据挖掘等。
+
+3. **分布式排序和分组**：MapReduce 的 Reduce 阶段提供了自然的排序和分组机制，适合于需要排序和分组的计算任务。
+
+4. **并行计算**：MapReduce 通过将计算任务分配到多个节点上并行执行，可以大大提高计算速度。
+
+然而，MapReduce 不适合需要复杂迭代计算或实时处理的任务。对于这些任务，可能需要使用其他的分布式计算模型，如 Spark 或 Flink。
+
+## 6.4. MapReduce的使用
+
+在 Python 中，可以使用 `mrjob` 库来实现 MapReduce。`mrjob` 是一个 Python 的 MapReduce 库，它允许在 Python 中编写 MapReduce 任务，并可以在多种环境中运行，包括本地机器、Hadoop 集群或 Amazon's Elastic MapReduce 服务。
+
+首先，确保已经安装了 `mrjob`。如果没有，可以使用 pip 安装：
+
+```bash
+pip install mrjob
+```
+
+然后，可以使用以下 Python 代码来实现一个计算单词出现次数的 MapReduce 任务：
+
+```python
+from mrjob.job import MRJob
+from mrjob.step import MRStep
+import re
+
+WORD_RE = re.compile(r"[\w']+")
+
+class MRWordFrequencyCount(MRJob):
+
+    def steps(self):
+        return [
+            MRStep(mapper=self.mapper_get_words,
+                   reducer=self.reducer_count_words)
+        ]
+
+    def mapper_get_words(self, _, line):
+        words = WORD_RE.findall(line)
+        for word in words:
+            yield (word.lower(), 1)
+
+    def reducer_count_words(self, word, values):
+        yield (word, sum(values))
+
+if __name__ == '__main__':
+    MRWordFrequencyCount.run()
+```
+
+可以将这个脚本保存为 `wordcount.py`，然后在命令行中运行它：
+
+```bash
+python wordcount.py input.txt
+```
+
+这个脚本会读取 `input.txt` 文件，计算每个单词的出现次数，然后将结果输出到标准输出。
+
+要在本地的 Hadoop 集群上运行上述的 MapReduce 任务，需要先确保机器上已经安装了 Hadoop 和 mrjob。然后，可以使用以下的命令来运行 MapReduce 任务：
+
+```bash
+python wordcount.py -r hadoop hdfs:///path/to/your/input.txt
+```
+
+在这个命令中，`-r hadoop` 指定了运行环境为 Hadoop，`hdfs:///path/to/your/input.txt` 是输入文件在 HDFS 中的路径。
+
+请注意，需要将 `hdfs:///path/to/your/input.txt` 替换为实际输入文件的路径。如果有多个输入文件，可以在命令行中列出所有的文件，或者使用通配符。
+
+运行这个命令后，mrjob 会自动将 Python 脚本转换为一个 Hadoop Streaming 任务，并在 Hadoop 集群上运行这个任务。结果会被输出到标准输出。
 
 
 
