@@ -177,17 +177,173 @@
 
 
 # 2. 大数据处理架构Hadoop
-## 2.1. 分布式存储的发展历史※
-## 2.2. Hadoop所需的硬件与系统环境※
 
+
+## 2.1. Hadoop的发展历史※
+
+Hadoop的发展历史：
+
+1. 2002年，Doug Cutting和Mike Cafarella开始开发Nutch项目，这是一个开源的网络搜索引擎。
+2. 2004年，Google发布了GFS（Google文件系统）和MapReduce的论文，这两种技术对Hadoop的发展产生了深远影响。
+3. 2006年，Doug Cutting在Nutch项目中实现了MapReduce和GFS，这就是Hadoop的雏形。同年，他将这部分代码独立出来，创建了Hadoop项目。
+4. 2008年，Yahoo在其生产环境中部署了Hadoop，这是Hadoop首次在大规模环境中的应用。
+5. 2011年，Apache基金会正式接纳Hadoop为顶级项目。
+6. 之后，Hadoop持续发展，衍生出了许多子项目，如HDFS、MapReduce、HBase、Hive、Pig等。
+
+Hadoop主要使用Java编写，因此Java是使用Hadoop的主要语言。此外，Hadoop Streaming API允许用户使用任何支持标准输入/输出的编程语言来编写MapReduce程序，如Python、Ruby等。
+
+
+## 2.2. Hadoop的结构※
+
+Hadoop的结构主要由以下几个核心组件构成：
+
+1. **Hadoop Common**：这是Hadoop的基础库，提供了Hadoop的基础工具和Java库。它包含了Hadoop项目所需的一些必要模块和接口，例如文件系统和OS级别的抽象，还有一些Java文件的实用程序。
+
+2. **Hadoop Distributed File System (HDFS)**：HDFS是Hadoop的分布式文件系统，它能在大规模集群中提供高吞吐量的数据访问。HDFS设计用来存储大量的数据，并且能够与Hadoop的其他组件协同工作。HDFS有两种类型的节点：NameNode（管理文件系统的元数据）和DataNode（存储实际的数据）。
+
+3. **Hadoop YARN (Yet Another Resource Negotiator)**：YARN是Hadoop的一个资源管理平台，负责管理计算资源和调度用户应用程序。YARN将任务调度和资源管理分离开来，使得Hadoop可以支持更多种类的处理任务，不仅仅是MapReduce任务。YARN包括两个主要组件：ResourceManager（负责整个系统的资源管理和分配）和 NodeManager（负责单个节点上的资源和任务管理）。
+
+4. **Hadoop MapReduce**：MapReduce是Hadoop的一个编程模型，用于处理和生成大数据集。用户可以编写Map和Reduce函数，然后Hadoop会负责数据的分发、并行处理、错误处理等。MapReduce运行在YARN之上，利用YARN进行资源管理和任务调度。
+
+这些组件共同构成了Hadoop的核心结构，使得Hadoop能够处理和存储大规模的数据。
+
+
+
+## 2.3. Hadoop的安装与运行※
+
+Hadoop的安装过程可以分为以下步骤：
+
+1. 下载Hadoop的最新版本。
+2. 解压下载的文件。
+3. 配置Hadoop的环境变量。
+4. 配置Hadoop的核心配置文件，包括core-site.xml, hdfs-site.xml, mapred-site.xml, yarn-site.xml。
+5. 格式化Hadoop文件系统（HDFS）。
+6. 启动Hadoop。
+
+这个过程可以通过脚本进行自动化部署。例如，可以使用Shell脚本或Python脚本来自动化上述步骤。此外，还有一些工具如Apache Ambari，它提供了一个Web界面，可以方便地进行Hadoop的安装和管理。
+
+在实际的生产环境中，Hadoop的安装和配置需要考虑的因素包括网络配置、硬件配置、安全设置等。
+
+Hadoop主要有以下三种安装和运行方式：
+
+1. **本地（standalone）模式**：这是Hadoop的默认模式。在这种模式下，Hadoop将在单个机器上运行，不使用HDFS，而是使用本地文件系统来存储数据。这种模式主要用于调试，可以在没有网络设置的情况下运行和测试MapReduce作业。
+
+2. **伪分布式模式**：在这种模式下，Hadoop仍然在单个机器上运行，但是会使用HDFS来存储数据。每个Hadoop守护进程（如NameNode, DataNode, ResourceManager, NodeManager等）都会在单独的Java进程中运行。这种模式主要用于开发和测试，可以在单个机器上模拟Hadoop集群。
+
+3. **完全分布式模式**：这是Hadoop在生产环境中的运行模式。在这种模式下，Hadoop会在一个由多台机器组成的集群上运行，每台机器运行一部分Hadoop守护进程。数据会被分布在整个HDFS中，MapReduce作业会在集群的所有机器上并行运行。
+
+## 2.4 Hadoop的使用
+
+使用Hadoop主要涉及以下步骤：
+
+1. **安装和配置**：首先，需要在的机器或集群上安装Hadoop，并进行适当的配置。这包括选择运行模式（本地、伪分布式或完全分布式），配置Hadoop的环境变量，以及设置Hadoop的配置文件。
+
+2. **启动Hadoop**：安装和配置完成后，需要启动Hadoop。这通常涉及启动HDFS和YARN。
+
+3. **运行MapReduce作业**：一旦Hadoop启动，就可以运行MapReduce作业了。这通常涉及编写Map和Reduce函数，然后使用Hadoop命令行工具提交作业。
+
+4. **监控和管理**：运行MapReduce作业时，可能需要监控作业的进度和性能。Hadoop提供了一些工具来帮助做到这一点，例如Hadoop Web UI和YARN ResourceManager UI。
+
+5. **数据存储和处理**：Hadoop的主要功能是存储和处理大规模数据。可以使用HDFS命令行工具来操作HDFS中的数据，例如创建目录、上传文件、下载文件等。也可以使用Hadoop的其他工具和库来处理数据，例如Hive和Pig。
 
 
 
 # 3. 分布式文件系统HDFS
-## 3.1.	HDFS的适用场景※
-## 3.2.	Hadoop的安装与使用
 
 
+## 3.1 分布式文件系统
+
+分布式文件系统目前主要有以下几种：
+
+1. **Google File System (GFS)**：GFS是Google开发的分布式文件系统，用于Google内部的大规模数据处理。谷歌内部使用，并没有开放给外界。GFS的设计启发了HDFS的开发。
+
+2. **Hadoop Distributed File System (HDFS)**：HDFS是Apache Hadoop项目的一部分，设计用于存储大规模数据集，并且能够与Hadoop的其他组件协同工作。HDFS具有高容错性，可以在廉价硬件上运行，并且设计用于高吞吐量的数据访问。
+适用场景：HDFS非常适合大规模数据处理任务，如大数据分析和机器学习，特别是当这些任务使用Hadoop生态系统（如MapReduce，HBase、Hive等）时。
+
+3. **GlusterFS**：GlusterFS是一个开源的分布式文件系统，能够处理大量的数据并提供高可用性。GlusterFS使用一种称为弹性哈希算法的技术来定位数据，这使得它可以在不需要元数据服务器的情况下进行扩展。
+适用场景：GlusterFS适合需要高度可用和可扩展存储的场景，例如云存储和媒体流。
+
+4. **Ceph**：Ceph是一个开源的分布式存储系统，提供了对象存储、块存储和文件系统三种接口。Ceph的一个显著特点是其强大的数据复制和恢复能力，它可以自动平衡数据并处理故障。
+适用场景：Ceph适合需要多种类型存储（如对象、块和文件存储）的场景，例如云计算、虚拟化和容器化环境。
+
+5. **MooseFS**：MooseFS是一个开源的分布式文件系统，提供了数据复制和容错功能。MooseFS的一个特点是其元数据服务器的设计，它使用多个元数据服务器来提供高可用性和容错能力。
+适用场景：MooseFS适合需要高度可用和容错的存储系统的场景，例如云存储和备份系统。
+
+## 3.2.	HDFS的适用场景※
+
+HDFS(Hadoop Distributed File System) 主要适用于以下场景：
+
+1. **大规模数据存储**：HDFS 能够存储 PB 级别的大数据，非常适合大数据分析等场景。
+
+2. **批处理**：HDFS 优化了大规模数据流的连续读写，适合批处理任务，例如日志分析和报告生成。
+
+3. **与 Hadoop 生态系统协同工作**：HDFS 是 Hadoop 生态系统的一部分，可与 MapReduce、Hive等 Hadoop 组件协同工作。
+
+4. **容错和恢复**：HDFS 具有高容错性，能够自动从硬件故障中恢复，适合需要高可用性和数据持久性的场景。
+
+5. **在廉价硬件上运行**：HDFS 能够在廉价的商用硬件上运行，适合需要大规模存储但预算有限的场景。
+
+6. **高吞吐量数据访问**：HDFS 非常适合高吞吐量数据访问，适合需要大量数据访问的场景。
+
+7. **不适合低延迟数据访问**：HDFS 不适合需要低延迟数据访问的场景，例如在线事务处理 (OLTP)。
+
+## 3.3.	HDFS的安装
+
+HDFS 是 Apache Hadoop 的一部分，因此安装 HDFS 实际上就是安装 Hadoop。以下是在单节点（也称为伪分布式模式）上安装 Hadoop 的基本步骤：
+
+1. **系统准备**：确保的系统安装了 Java（Hadoop 需要 Java 运行环境），并设置好 `JAVA_HOME` 环境变量。
+
+2. **下载 Hadoop**：从 Apache Hadoop 的官方网站下载最新的 Hadoop 发行版。
+
+3. **解压 Hadoop**：将下载的 Hadoop tar.gz 文件解压到想要安装 Hadoop 的目录。
+
+4. **配置 Hadoop**：编辑 Hadoop 的配置文件，主要是 `core-site.xml`，`hdfs-site.xml` 和 `mapred-site.xml`。在伪分布式模式下，需要设置文件系统为本地文件系统，并指定 NameNode 和 DataNode 的地址。
+
+5. **格式化 HDFS**：在首次启动 Hadoop 之前，需要使用 `hadoop namenode -format` 命令来格式化 HDFS。
+
+6. **启动 Hadoop**：使用 `start-dfs.sh` 和 `start-yarn.sh` 脚本来启动 Hadoop。
+
+7. **验证安装**：使用 `jps` 命令来检查 Hadoop 的各个组件是否已经启动。应该能看到 `NameNode`，`DataNode`，`SecondaryNameNode`，`ResourceManager` 和 `NodeManager` 这几个进程。
+
+如果想在多节点集群上安装 Hadoop，那么还需要配置 SSH 免密码登录，并在所有节点上重复以上步骤。
+
+
+## 3.4. HDFS的使用
+
+HDFS 提供了多种读写文件的方式，主要包括以下几种：
+
+1. **HDFS Shell 命令**：HDFS 提供了一套类似于 Unix 文件系统的 Shell 命令，可以用来读写文件。例如，`hadoop fs -put localfile /user/hadoop/hadoopfile` 可以将本地文件上传到 HDFS，`hadoop fs -get /user/hadoop/hadoopfile localfile` 可以将 HDFS 上的文件下载到本地。
+
+2. **HDFS Java API**：HDFS 的主要 API 是 Java API，可以用来进行更复杂的文件操作。例如，可以使用 `FileSystem` 类的 `create` 和 `open` 方法来写入和读取文件。
+
+3. **WebHDFS REST API**：WebHDFS 是 HDFS 提供的一个 HTTP REST API，可以通过 HTTP 请求来读写文件。这使得非 Java 语言也可以方便地与 HDFS 交互。
+
+4. **Hadoop Streaming**：Hadoop Streaming 是 Hadoop 提供的一个工具，可以使用任何可执行文件或脚本作为 Map/Reduce 任务来处理 HDFS 上的数据。
+
+5. **第三方库**：有一些第三方库提供了与 HDFS 交互的接口，
+
+Python 的 `hdfs`库，可以用来读写 HDFS 上的文件，提供了一些函数和方法，可以用来执行常见的HDFS操作，如读写文件、创建和删除目录等。
+
+以下是一个使用`hdfs`库的例子：
+
+```python
+from hdfs import InsecureClient
+
+# 创建一个客户端
+client = InsecureClient('http://localhost:50070', user='hdfs')
+
+# 创建一个目录
+client.makedirs('/user/hdfs/dir')
+
+# 上传一个文件
+client.upload('/user/hdfs/dir', 'localfile.txt')
+
+# 读取一个文件
+with client.read('/user/hdfs/dir/localfile.txt') as reader:
+  content = reader.read()
+```
+
+请注意，这只是一个基本的例子，实际使用时可能需要处理各种可能的错误和异常。
 
 
 # 4. 分布式数据库HBase
@@ -213,13 +369,13 @@
 
 # 7. 分布式计算框架Spark
 ## 7.1.	Spark的发展历史和适用场景※
-## 7.2.	Spark的安装与应用
+## 7.2.	Spark的安装与使用
 
 
 
 
 # 8. 流计算以及Flink基础
 ## 8.1.	Flink的发展历史和适用场景※
-## 8.2.	Flink的安装与应用※
+## 8.2.	Flink的安装与使用※
 
 
