@@ -113,6 +113,103 @@
 - 优点：读写性能优秀，提供冗余，一个、两个或三个磁盘故障（取决于RAIDZ级别）不会导致数据丢失，避免了RAID 5的"写孔"问题。
 - 缺点：写性能受校验计算影响，恢复数据时性能下降，需要ZFS文件系统支持。
 
+
+### 1.2.4 Ubuntu下创建 RAID
+
+
+以下是在 Ubuntu 中安装 Webmin 的步骤：
+
+
+1. 首先，下载 Webmin 的 Debian 包。你可以在 Webmin 的官方网站找到下载链接，或者直接在终端中使用以下命令下载：
+
+
+```bash
+
+wget http://prdownloads.sourceforge.net/webadmin/webmin_1.973_all.deb
+
+```
+
+
+2. 下载完成后，使用 dpkg 命令安装 Webmin：
+
+
+```bash
+
+sudo dpkg -i webmin_1.973_all.deb
+
+```
+
+
+3. dpkg 可能无法解决 Webmin 的所有依赖关系，你可以使用 apt 命令来安装剩余的依赖：
+
+
+```bash
+
+sudo apt-get install -f
+
+```
+
+
+4. 安装完成后，你可以在浏览器中通过 https://localhost:10000 访问 Webmin。请使用你的 Ubuntu 用户名和密码登录。
+
+
+在 "Linux RAID" 页面中，你可以看到你的所有 RAID 设备和他们的状态。你可以使用 "Create RAID" 按钮来创建新的 RAID 设备，或者选择一个现有的设备进行管理。
+
+
+请注意，Webmin 是一个强大的系统管理工具，它可以管理你系统的许多方面，包括用户、服务、网络设置等。在使用它时，请确保你了解你正在做什么，以避免意外地改变你的系统设置。
+
+
+
+### 1.2.5 ZFS 和 RAIDZ
+
+
+在 Ubuntu 下，可以使用 ZFS 文件系统来创建 RAIDZ 磁盘阵列。以下是创建 RAIDZ 的步骤：
+
+
+1. 首先，你需要在你的系统上安装 ZFS。在终端中运行以下命令：
+
+
+```bash
+
+sudo apt update
+
+sudo apt install zfsutils-linux
+
+```
+
+
+2. 假设你有三个磁盘 `/dev/sdb`、`/dev/sdc` 和 `/dev/sdd`，你可以使用以下命令创建 RAIDZ：
+
+
+```bash
+
+sudo zpool create mypool raidz /dev/sdb /dev/sdc /dev/sdd
+
+```
+
+
+这将创建一个名为 `mypool` 的 RAIDZ 磁盘阵列。
+
+
+3. 你可以使用 `zpool status` 命令来检查你的 RAIDZ 状态：
+
+
+```bash
+
+sudo zpool status mypool
+
+```
+
+
+请注意，RAIDZ 需要至少三个磁盘。如果你有更多的磁盘，你可以选择创建 RAIDZ2 或 RAIDZ3，它们可以容忍两个或三个磁盘的失败。
+
+
+另外，ZFS 是一个复杂的文件系统，它有许多高级功能，如快照、复制和数据压缩。在使用 ZFS 时，你可能需要花一些时间来学习和理解这些功能。
+
+
+一个在线的RAIDZ容量计算工具：https://raidz-calculator.com/default.aspx
+
+
 如果多盘位依然不够用，就要考虑分布式存储了。
 
 ## 1.3 分布式存储
