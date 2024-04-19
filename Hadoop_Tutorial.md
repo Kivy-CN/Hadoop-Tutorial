@@ -120,7 +120,7 @@
 以下是在 Ubuntu 中安装 Webmin 的步骤：
 
 
-1. 首先，下载 Webmin 的 Debian 包。你可以在 Webmin 的官方网站找到下载链接，或者直接在终端中使用以下命令下载：
+1. 首先，下载 Webmin 的 Debian 包。可以在 Webmin 的官方网站找到下载链接，或者直接在终端中使用以下命令下载：
 
 
 ```bash
@@ -140,7 +140,7 @@ sudo dpkg -i webmin_1.973_all.deb
 ```
 
 
-3. dpkg 可能无法解决 Webmin 的所有依赖关系，你可以使用 apt 命令来安装剩余的依赖：
+3. dpkg 可能无法解决 Webmin 的所有依赖关系，可以使用 apt 命令来安装剩余的依赖：
 
 
 ```bash
@@ -150,13 +150,13 @@ sudo apt-get install -f
 ```
 
 
-4. 安装完成后，你可以在浏览器中通过 https://localhost:10000 访问 Webmin。请使用你的 Ubuntu 用户名和密码登录。
+4. 安装完成后，可以在浏览器中通过 https://localhost:10000 访问 Webmin。请使用 Ubuntu 用户名和密码登录。
 
 
-在 "Linux RAID" 页面中，你可以看到你的所有 RAID 设备和他们的状态。你可以使用 "Create RAID" 按钮来创建新的 RAID 设备，或者选择一个现有的设备进行管理。
+在 "Linux RAID" 页面中，可以看到所有 RAID 设备和他们的状态。可以使用 "Create RAID" 按钮来创建新的 RAID 设备，或者选择一个现有的设备进行管理。
 
 
-请注意，Webmin 是一个强大的系统管理工具，它可以管理你系统的许多方面，包括用户、服务、网络设置等。在使用它时，请确保你了解你正在做什么，以避免意外地改变你的系统设置。
+请注意，Webmin 是一个强大的系统管理工具，它可以管理系统的许多方面，包括用户、服务、网络设置等。在使用它时，请确保了解正在做什么，以避免意外地改变系统设置。
 
 
 
@@ -166,7 +166,7 @@ sudo apt-get install -f
 在 Ubuntu 下，可以使用 ZFS 文件系统来创建 RAIDZ 磁盘阵列。以下是创建 RAIDZ 的步骤：
 
 
-1. 首先，你需要在你的系统上安装 ZFS。在终端中运行以下命令：
+1. 首先，需要在系统上安装 ZFS。在终端中运行以下命令：
 
 
 ```bash
@@ -178,7 +178,7 @@ sudo apt install zfsutils-linux
 ```
 
 
-2. 假设你有三个磁盘 `/dev/sdb`、`/dev/sdc` 和 `/dev/sdd`，你可以使用以下命令创建 RAIDZ：
+2. 假设有三个磁盘 `/dev/sdb`、`/dev/sdc` 和 `/dev/sdd`，可以使用以下命令创建 RAIDZ：
 
 
 ```bash
@@ -191,7 +191,7 @@ sudo zpool create mypool raidz /dev/sdb /dev/sdc /dev/sdd
 这将创建一个名为 `mypool` 的 RAIDZ 磁盘阵列。
 
 
-3. 你可以使用 `zpool status` 命令来检查你的 RAIDZ 状态：
+3. 可以使用 `zpool status` 命令来检查 RAIDZ 状态：
 
 
 ```bash
@@ -201,10 +201,10 @@ sudo zpool status mypool
 ```
 
 
-请注意，RAIDZ 需要至少三个磁盘。如果你有更多的磁盘，你可以选择创建 RAIDZ2 或 RAIDZ3，它们可以容忍两个或三个磁盘的失败。
+请注意，RAIDZ 需要至少三个磁盘。如果有更多的磁盘，可以选择创建 RAIDZ2 或 RAIDZ3，它们可以容忍两个或三个磁盘的失败。
 
 
-另外，ZFS 是一个复杂的文件系统，它有许多高级功能，如快照、复制和数据压缩。在使用 ZFS 时，你可能需要花一些时间来学习和理解这些功能。
+另外，ZFS 是一个复杂的文件系统，它有许多高级功能，如快照、复制和数据压缩。在使用 ZFS 时，可能需要花一些时间来学习和理解这些功能。
 
 
 一个在线的RAIDZ容量计算工具：https://raidz-calculator.com/default.aspx
@@ -543,41 +543,83 @@ tar xzf hbase-x.y.z.tar.gz
 
 ## 4.6. HBase操作的Python演示
 
+在HBase shell中，可以使用以下命令来删除所有的表：
+
+```bash
+hbase shell
+list.each { |table| disable table; drop table }
+```
+
+这段代码首先列出所有的表，然后对每个表执行`disable`和`drop`操作。`disable`操作是必要的，因为不能删除一个正在使用的表。
+
+请注意，这将删除所有的表，包括任何重要的数据。在执行这个操作之前，请确保已经备份了所有重要的数据。
+
 要在 Python 中使用 HBase，可以使用 `happybase` 库。以下是一个简单的示例，展示如何连接到 HBase，创建表，插入数据，然后查询数据：
 
 首先，要启动thrift，然后确保已经安装了 `happybase`。如果没有，可以使用 pip 安装：
 
 ```bash
-./bin/​hbase thrift start
-pip install happybase
+start-all.sh
+start-hbase.sh
+​hbase thrift start
+pip install happybase hbase
 ```
 
 然后，可以使用以下 Python 代码来操作 HBase：
 
 ```python
+import os
 import happybase
 
 # 连接到 HBase
-connection = happybase.Connection('localhost')
+connection = happybase.Connection('localhost', 9090)
+# 获取表名列表
+table_names = connection.tables()
+# 解码表名
+table_names = [name.decode('utf-8') for name in table_names]
+print(table_names)
 
-# 创建表
-table_name = 'my_table'
+# 从环境变量获取表名和列族
+table_name = os.getenv('HBASE_TABLE_NAME', 'score_info')
 families = {
-    'cf1': dict(max_versions=10),
-    'cf2': dict(max_versions=1, block_cache_enabled=False),
-    'cf3': dict(),  # 使用默认值
+    'name': dict(max_versions=10),
+    'score': dict(max_versions=1, block_cache_enabled=False),
+    'date': dict(),  # 使用默认值
 }
-connection.create_table(table_name, families)
+# 检查表是否存在
+if table_name in connection.tables():
+    print(f"Table {table_name} already exists.")
+else:
+    connection.create_table(table_name, families)
+    print(f"Table {table_name} created.")
 
 # 获取表
 table = connection.table(table_name)
 
 # 插入数据
-table.put('row-key1', {'cf1:col1': 'value1', 'cf2:col2': 'value2'})
+table.put('student1', {
+    'name:full_name': "Fred",
+    'score:poltics': '74',
+    'score:english': '104',
+    'score:chinese': '117',
+    'date:created': '2024-01-09'
+})
+
+# 插入数据
+table.put('student2', {
+    'name:full_name': "于同学",
+    'score:政治': '74',
+    'score:英语': '104',
+    'score:语文': '117',
+    'date:created': '2024-01-09'
+})
 
 # 查询数据
-row = table.row('row-key1')
-print(row['cf1:col1'])  # 输出: value1
+data = table.row('student2')
+
+# 打印数据
+for key, value in data.items():
+    print(f"{key.decode('utf-8')}: {value.decode('utf-8')}")
 ```
 
 请注意，这个示例假设 HBase Thrift 服务正在本地运行，并且监听的是默认的端口（9090）。如果 HBase Thrift 服务在其他地方运行，或者使用的是其他端口，需要在创建 `happybase.Connection` 时提供正确的主机名和端口号。
@@ -648,12 +690,84 @@ Hive 是一个建立在 Hadoop 上的数据仓库工具，它提供了类 SQL �
 
 ## 5.4. Hive的使用
 
-在 Python 中使用 Hive，可以使用 `pyhive` 库。以下是一个简单的示例，展示如何连接到 Hive，执行查询，然后获取结果：
-
-首先，确保已经安装了 `pyhive`。如果没有，可以使用 pip 安装：
+要停止所有的 Hive 服务，你需要停止 Hive Metastore 服务和 HiveServer2 服务。这通常可以通过以下命令完成：
 
 ```bash
-pip install pyhive
+# 停止 Hive Metastore
+pkill -f HiveMetaStore
+
+# 停止 HiveServer2
+pkill -f HiveServer2
+```
+
+这些命令会找到运行 Hive Metastore 和 HiveServer2 的进程，并发送 SIGTERM 信号来优雅地停止这些进程。如果这些进程没有响应 SIGTERM 信号，你可以使用 SIGKILL 信号强制停止这些进程，例如：
+
+```bash
+# 强制停止 Hive Metastore
+pkill -9 -f HiveMetaStore
+
+# 强制停止 HiveServer2
+pkill -9 -f HiveServer2
+```
+
+请注意，这些命令需要在运行 Hive 服务的机器上执行，并且可能需要 root 权限。如果你的 Hive 服务是通过某种集群管理工具（如 Apache Ambari 或 Cloudera Manager）管理的，你应该使用那个工具来停止 Hive 服务。
+
+
+通过修改Hadoop的`core-site.xml`配置文件来添加或修改`hadoop.proxyuser.hadoop.groups`和`hadoop.proxyuser.hadoop.hosts`这两个配置项。
+
+```Bash
+cp  /usr/local/hadoop/etc/hadoop/core-site.xml  /usr/local/hadoop/etc/hadoop/core-site.xml.back
+nano /usr/local/hadoop/etc/hadoop/core-site.xml
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:mysql://localhost:3306/hive?createDatabaseIfNotExist=true</value>
+    <description>JDBC connect string for a JDBC metastore</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>com.mysql.jdbc.Driver</value>
+    <description>Driver class name for a JDBC metastore</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionUserName</name>
+    <value>hive</value>
+    <description>username to use against metastore database</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionPassword</name>
+    <value>hive</value>
+    <description>password to use against metastore database</description>
+  </property>
+  <property>
+    <name>hive.server2.authentication</name>
+    <value>PAM</value>
+  </property>
+    <property>
+        <name>hive.server2.enable.doAs</name>
+        <value>true</value>
+    </property>
+</configuration>
+```
+
+这个配置允许`hadoop`用户代理任何组的用户，并且允许从任何主机进行代理。
+
+修改配置文件后，你需要重启Hadoop和Hive服务。
+
+请注意，这个配置可能会带来安全风险，因为它允许`hadoop`用户代理任何用户。在生产环境中，你应该根据实际需要来设置这个配置，而不是简单地允许所有的代理请求。
+
+在 Python 中使用 Hive，可以使用 `pyhive` 库。以下是一个简单的示例，展示如何连接到 Hive，执行查询，然后获取结果：
+
+首先，要运行Hiveserver2。然后要确保已经安装了 `pyhive` 等依赖包。如果没有，可以使用 pip 安装：
+
+```bash
+hive --service hiveserver2 &
+pip install pyhive thrift thrift_sasl
 ```
 
 然后，可以使用以下 Python 代码来操作 Hive：
@@ -662,13 +776,45 @@ pip install pyhive
 from pyhive import hive
 
 # 连接到 Hive
-conn = hive.Connection(host='localhost', port=10000, username='user')
+conn = hive.Connection(host='localhost', port=10000, username='hdoop')
 
 # 创建一个 cursor
 cursor = conn.cursor()
 
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS my_table (
+        column1 STRING,
+        column2 STRING,
+        column3 STRING
+    ) 
+    ROW FORMAT DELIMITED 
+    FIELDS TERMINATED BY ',' 
+    STORED AS TEXTFILE
+''')
+
+cursor.execute('''
+    INSERT INTO students (name, major, gender) 
+    VALUES ('Tom', 'Computer Science', 'Male')
+''')
+
+
+# 获取所有表的名称
+cursor.execute("SHOW TABLES")
+tables = cursor.fetchall()
+
+for table in tables:
+    table_name = table[0]
+    print(f"Table Name: {table_name}")
+    
+    # 获取并打印表的结构
+    cursor.execute(f"DESCRIBE {table_name}")
+    schema = cursor.fetchall()
+    for column in schema:
+        print(column)        
+    print("\n")
+
 # 执行查询
-cursor.execute('SELECT * FROM my_table')
+cursor.execute('SELECT * FROM students')
 
 # 获取结果
 for result in cursor.fetchall():
