@@ -545,9 +545,10 @@ tar xzf hbase-x.y.z.tar.gz
 
 要在 Python 中使用 HBase，可以使用 `happybase` 库。以下是一个简单的示例，展示如何连接到 HBase，创建表，插入数据，然后查询数据：
 
-首先，确保已经安装了 `happybase`。如果没有，可以使用 pip 安装：
+首先，要启动thrift，然后确保已经安装了 `happybase`。如果没有，可以使用 pip 安装：
 
 ```bash
+./bin/​hbase thrift start
 pip install happybase
 ```
 
