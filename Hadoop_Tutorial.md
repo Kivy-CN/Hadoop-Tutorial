@@ -484,10 +484,17 @@ ssh localhost
 1. **编辑 `core-site.xml` 文件**：`nano /usr/local/hadoop/etc/hadoop/core-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
 
 ```xml
-<property>
-    <name>fs.defaultFS</name>
-    <value>hdfs://localhost:9000</value>
-</property>
+<configuration>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>file:/usr/local/hadoop/tmp</value>
+        <description>Abase for other temporary directories.</description>
+    </property>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
 ```
 
 这个配置设置了 Hadoop 文件系统（HDFS）的默认名称服务（NameNode）的地址。
@@ -495,10 +502,32 @@ ssh localhost
 2. **编辑 `hdfs-site.xml` 文件**： `nano  /usr/local/hadoop/etc/hadoop/hdfs-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
 
 ```xml
-<property>
-    <name>dfs.replication</name>
-    <value>1</value>
-</property>
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:/usr/local/hadoop/tmp/dfs/name</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:/usr/local/hadoop/tmp/dfs/data</value>
+    </property>
+    <property>
+        <name>dfs.http.address</name>
+        <value>0.0.0.0:50070</value>
+    </property>
+    <property>
+        <name>dfs.namenode.secondary.http-address</name>
+        <value>0.0.0.0:50090</value>
+    </property>
+    <property>
+        <name>mapred.job.tracker.http.address</name>
+        <value>0.0.0.0:50030</value>
+    </property>
+</configuration>
 ```
 
 这个配置设置了 HDFS 的副本数。在伪分布式模式下，我们只有一台机器，所以副本数应该设置为 1。
@@ -736,18 +765,22 @@ sudo nano /usr/local/hbase/conf/hbase-site.xml
 
 ```xml
 <configuration>
-  <property>
-    <name>hbase.rootdir</name>
-    <value>file:///usr/local/hbase</value>
-  </property>
-  <property>
-    <name>hbase.zookeeper.property.dataDir</name>
-    <value>/usr/local/zookeeper</value>
-  </property>
-  <property>
-    <name>hbase.cluster.distributed</name>
-    <value>true</value>
-  </property>
+   <property>
+      <name>hbase.rootdir</name>
+        <value>hdfs://localhost:9000/hbase</value>
+    </property>
+    <property>
+      <name>hbase.cluster.distributed</name>
+        <value>true</value>
+    </property>
+    <property>
+      <name>hbase.unsafe.stream.capability.enforce</name>
+        <value>false</value>
+    </property>
+    <property>
+      <name>hbase.wal.provider</name>
+        <value>filesystem</value>
+    </property>
 </configuration>
 ```
 
