@@ -708,6 +708,76 @@ tar xzf hbase-x.y.z.tar.gz
 
 以上是在单个节点上安装 HBase 的基本步骤。在生产环境中，可能需要在多个节点上安装 HBase，以构建一个分布式的 HBase 集群。
 
+
+以下是在已经安装好 Hadoop 的基础上，安装 HBase 的步骤：
+
+1. **下载 HBase**：首先，从 Apache HBase 的官方网站下载最新稳定版的 HBase。你可以使用 `wget` 命令来下载：
+
+```bash
+wget https://mirrors.tuna.tsinghua.edu.cn/apache/hbase/stable/hbase-2.5.8-bin.tar.gz
+```
+
+请注意，上述链接可能会随着新版本的发布而改变。
+
+2. **解压 HBase**：使用 `tar` 命令解压下载的文件：
+
+```bash
+tar xzf hbase-2.5.8-bin.tar.gz
+sudo mv hbase-2.5.8 /usr/local/hbase
+```
+
+3. **配置 HBase**：编辑 HBase 的配置文件 `hbase-site.xml`，设置 HBase 的运行模式和数据存储路径。你可以使用以下命令打开配置文件：
+
+```bash
+sudo nano /usr/local/hbase/conf/hbase-site.xml
+```
+
+然后，添加以下内容到配置文件：
+
+```xml
+<configuration>
+  <property>
+    <name>hbase.rootdir</name>
+    <value>file:///usr/local/hbase</value>
+  </property>
+  <property>
+    <name>hbase.zookeeper.property.dataDir</name>
+    <value>/usr/local/zookeeper</value>
+  </property>
+  <property>
+    <name>hbase.cluster.distributed</name>
+    <value>true</value>
+  </property>
+</configuration>
+```
+
+4. **配置 HBase 环境变量**：编辑 `~/.bashrc` 文件，添加 HBase 的环境变量。你可以使用以下命令打开配置文件：
+
+```bash
+nano ~/.bashrc
+```
+
+然后，添加以下内容到文件末尾：
+
+```bash
+export HBASE_HOME=/usr/local/hbase
+export PATH=$PATH:$HBASE_HOME/bin
+```
+
+然后，运行以下命令使环境变量生效：
+
+```bash
+source ~/.bashrc
+```
+
+5. **启动 HBase**：最后，你可以使用以下命令启动 HBase：
+
+```bash
+start-hbase.sh
+```
+
+现在，你应该已经成功安装并启动了 HBase。你可以通过访问 `http://localhost:16010` 来查看 HBase 的状态。
+
 ## 4.5. HBase的使用
 
 安装好的 HBase 有多种使用方式：
