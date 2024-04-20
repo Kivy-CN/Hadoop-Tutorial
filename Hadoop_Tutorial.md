@@ -373,10 +373,10 @@ wget https://mirrors.tuna.tsinghua.edu.cn/apache/hadoop/common/hadoop-3.4.0/hado
 
 ```bash
 tar xzf hadoop-3.4.0.tar.gz
-mv hadoop-3.4.0 /usr/local/hadoop
+sudo mv hadoop-3.4.0 /usr/local/hadoop
 ```
 
-5. **配置 Hadoop**：配置 Hadoop 的环境变量。打开 `~/.bashrc` 文件，并在文件末尾添加以下行：
+5. **配置 Hadoop**：配置 Hadoop 的环境变量。 `nano ~/.bashrc` 打开配置文件，并在文件末尾添加以下行：
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
@@ -387,12 +387,11 @@ export PATH=/usr/local/hadoop/bin:$PATH
 export PATH=/usr/local/hadoop/sbin:$PATH
 ```
 
-其中，`/path/to/hadoop-3.3.1` 应该替换为你的 Hadoop 安装目录。
-
 然后，运行以下命令使配置生效：
 
 ```bash
 source ~/.bashrc
+sudo hostnamectl set-hostname mini //改一下主机名，避免和其他的重复
 ```
 
 6. **验证安装**：运行以下命令验证 Hadoop 是否安装成功：
@@ -403,7 +402,132 @@ hadoop version
 
 如果安装成功，这个命令应该会输出你安装的 Hadoop 版本信息。
 
-以上就是在 Ubuntu Server 22.04 上安装 Hadoop 的步骤。请注意，这些步骤只是安装了 Hadoop 的基本组件，并没有配置 Hadoop 集群。如果你需要设置 Hadoop 集群，你还需要进行额外的配置。
+
+## 2.6 配置SSH免密码登录
+
+要让 SSH 同时支持免密码登录和用户名密码登录，你需要在 SSH 配置文件 `/etc/ssh/sshd_config` 中进行一些设置。以下是具体步骤：
+
+1. **打开 SSH 配置文件**：使用以下命令打开 SSH 配置文件：
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+2. **修改配置**：在配置文件中找到以下两行（如果不存在就添加它们），并设置如下：
+
+```bash
+PubkeyAuthentication yes
+PasswordAuthentication yes
+```
+
+`PubkeyAuthentication yes` 表示启用公钥认证，也就是免密码登录。
+
+`PasswordAuthentication yes` 表示启用密码认证，也就是用户名密码登录。
+
+3. **保存并关闭文件**：按 `Ctrl+X`，然后按 `Y`，最后按 `Enter` 保存并关闭文件。
+
+4. **重启 SSH 服务**：使用以下命令重启 SSH 服务，使新的配置生效：
+
+```bash
+sudo service ssh restart
+```
+
+现在，你的 SSH 服务应该同时支持免密码登录和用户名密码登录了。你可以通过尝试 SSH 到 localhost 来测试这个配置：
+
+```bash
+ssh localhost
+```
+
+如果你已经配置了免密码登录，这个命令应该立即返回，而不会提示你输入密码。然后，你可以尝试删除你的公钥（`~/.ssh/id_rsa.pub`），然后再次尝试 SSH 到 localhost，这次它应该会提示你输入密码。
+
+对于 Hadoop 的伪分布式运行，确实需要配置 SSH 的免密码登录。这是因为 Hadoop 需要通过 SSH 来启动和停止各个节点上的守护进程。以下是配置 SSH 免密码登录的步骤：
+
+1. **生成 SSH 密钥对**：在你的用户目录下，使用以下命令生成 SSH 密钥对：
+
+```bash
+ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+```
+
+这个命令会在 `~/.ssh` 目录下生成两个文件：`id_rsa`（私钥）和 `id_rsa.pub`（公钥）。`-P ""` 参数表示创建一个没有密码的密钥对。
+
+2. **添加公钥到 authorized_keys**：使用以下命令将公钥添加到 `authorized_keys` 文件：
+
+```bash
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+```
+
+这个命令会将你的公钥添加到 `authorized_keys` 文件，这样 SSH 就可以使用你的私钥进行身份验证。
+
+3. **设置正确的权限**：SSH 需要 `~/.ssh` 目录和 `authorized_keys` 文件有正确的权限。你可以使用以下命令设置这些权限：
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+4. **测试 SSH 免密码登录**：现在你应该可以通过 SSH 免密码登录到 localhost 了。你可以使用以下命令进行测试：
+
+```bash
+ssh localhost
+```
+
+这个命令应该立即返回，而不会提示你输入密码。
+
+## 2.7 Hadoop的伪分布运行
+
+
+PubkeyAuthentication yes
+
+要将 Hadoop 配置为伪分布式模式，你需要修改两个配置文件：`core-site.xml` 和 `hdfs-site.xml`。这两个文件位于咱们上面设 Hadoop 安装目录的 `/usr/local/hadoop/etc/hadoop` 文件夹中。
+
+以下是配置步骤：
+
+1. **编辑 `core-site.xml` 文件**：`nano core-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
+
+```xml
+<property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://localhost:9000</value>
+</property>
+```
+
+这个配置设置了 Hadoop 文件系统（HDFS）的默认名称服务（NameNode）的地址。
+
+2. **编辑 `hdfs-site.xml` 文件**： `nano hdfs-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
+
+```xml
+<property>
+    <name>dfs.replication</name>
+    <value>1</value>
+</property>
+```
+
+这个配置设置了 HDFS 的副本数。在伪分布式模式下，我们只有一台机器，所以副本数应该设置为 1。
+
+3. **设置JAVA_HOME**
+
+```Bash
+nano /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+```
+
+```Bash
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+```
+
+4. **格式化 HDFS**：在启动 Hadoop 之前，你需要格式化 HDFS。你可以使用以下命令来格式化 HDFS：
+
+```bash
+hdfs namenode -format
+```
+
+5. **启动 Hadoop**：现在，你可以使用 `start-all.sh` 脚本来启动 Hadoop 了：
+
+```bash
+start-all.sh
+```
+
+现在，你的 Hadoop 应该已经以伪分布式模式运行了。你可以使用 `jps` 命令来检查 Hadoop 的进程是否已经启动。如果 Hadoop 已经启动，`jps` 命令应该会显示 `NameNode`、`DataNode`、`SecondaryNameNode`、`NodeManager` 和 `ResourceManager` 这几个进程。
+
 
 # 3. 分布式文件系统HDFS
 
