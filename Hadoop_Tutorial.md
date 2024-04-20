@@ -405,42 +405,9 @@ hadoop version
 
 ## 2.6 配置SSH免密码登录
 
-要让 SSH 同时支持免密码登录和用户名密码登录，你需要在 SSH 配置文件 `/etc/ssh/sshd_config` 中进行一些设置。以下是具体步骤：
+对于 Hadoop 的伪分布式运行，需要配置 SSH 的免密码登录。这是因为 Hadoop 需要通过 SSH 来启动和停止各个节点上的守护进程。
 
-1. **打开 SSH 配置文件**：使用以下命令打开 SSH 配置文件：
-
-```bash
-sudo nano /etc/ssh/sshd_config
-```
-
-2. **修改配置**：在配置文件中找到以下两行（如果不存在就添加它们），并设置如下：
-
-```bash
-PubkeyAuthentication yes
-PasswordAuthentication yes
-```
-
-`PubkeyAuthentication yes` 表示启用公钥认证，也就是免密码登录。
-
-`PasswordAuthentication yes` 表示启用密码认证，也就是用户名密码登录。
-
-3. **保存并关闭文件**：按 `Ctrl+X`，然后按 `Y`，最后按 `Enter` 保存并关闭文件。
-
-4. **重启 SSH 服务**：使用以下命令重启 SSH 服务，使新的配置生效：
-
-```bash
-sudo service ssh restart
-```
-
-现在，你的 SSH 服务应该同时支持免密码登录和用户名密码登录了。你可以通过尝试 SSH 到 localhost 来测试这个配置：
-
-```bash
-ssh localhost
-```
-
-如果你已经配置了免密码登录，这个命令应该立即返回，而不会提示你输入密码。然后，你可以尝试删除你的公钥（`~/.ssh/id_rsa.pub`），然后再次尝试 SSH 到 localhost，这次它应该会提示你输入密码。
-
-对于 Hadoop 的伪分布式运行，确实需要配置 SSH 的免密码登录。这是因为 Hadoop 需要通过 SSH 来启动和停止各个节点上的守护进程。以下是配置 SSH 免密码登录的步骤：
+配置 SSH 免密码登录的步骤：
 
 1. **生成 SSH 密钥对**：在你的用户目录下，使用以下命令生成 SSH 密钥对：
 
@@ -473,16 +440,48 @@ ssh localhost
 
 这个命令应该立即返回，而不会提示你输入密码。
 
-## 2.7 Hadoop的伪分布运行
+要让 SSH 同时支持免密码登录和用户名密码登录，你需要在 SSH 配置文件 `/etc/ssh/sshd_config` 中进行一些设置。以下是具体步骤：
 
+5. **打开 SSH 配置文件**：使用以下命令打开 SSH 配置文件：
 
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+6. **修改配置**：在配置文件中找到以下两行（如果不存在就添加它们），并设置如下：
+
+```bash
 PubkeyAuthentication yes
+PasswordAuthentication yes
+```
+
+`PubkeyAuthentication yes` 表示启用公钥认证，也就是免密码登录。
+
+`PasswordAuthentication yes` 表示启用密码认证，也就是用户名密码登录。
+
+7. **保存并关闭文件**：按 `Ctrl+X`，然后按 `Y`，最后按 `Enter` 保存并关闭文件。
+
+8. **重启 SSH 服务**：使用以下命令重启 SSH 服务，使新的配置生效：
+
+```bash
+sudo service ssh restart
+```
+
+现在，你的 SSH 服务应该同时支持免密码登录和用户名密码登录了。你可以通过尝试 SSH 到 localhost 来测试这个配置：
+
+```bash
+ssh localhost
+```
+
+如果你已经配置了免密码登录，这个命令应该立即返回，而不会提示你输入密码。
+
+## 2.7 Hadoop的伪分布运行
 
 要将 Hadoop 配置为伪分布式模式，你需要修改两个配置文件：`core-site.xml` 和 `hdfs-site.xml`。这两个文件位于咱们上面设 Hadoop 安装目录的 `/usr/local/hadoop/etc/hadoop` 文件夹中。
 
 以下是配置步骤：
 
-1. **编辑 `core-site.xml` 文件**：`nano core-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
+1. **编辑 `core-site.xml` 文件**：`nano /usr/local/hadoop/etc/hadoop/core-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
 
 ```xml
 <property>
@@ -493,7 +492,7 @@ PubkeyAuthentication yes
 
 这个配置设置了 Hadoop 文件系统（HDFS）的默认名称服务（NameNode）的地址。
 
-2. **编辑 `hdfs-site.xml` 文件**： `nano hdfs-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
+2. **编辑 `hdfs-site.xml` 文件**： `nano  /usr/local/hadoop/etc/hadoop/hdfs-site.xml` 文件，并在 `<configuration>` 标签中添加以下内容：
 
 ```xml
 <property>
