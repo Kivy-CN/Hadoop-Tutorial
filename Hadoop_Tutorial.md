@@ -793,8 +793,13 @@ nano ~/.bashrc
 然后，添加以下内容到文件末尾：
 
 ```bash
-export HBASE_HOME=/usr/local/hbase
-export PATH=$PATH:$HBASE_HOME/bin
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+export PATH=/usr/local/hadoop/bin:$PATH
+export PATH=/usr/local/hadoop/sbin:$PATH
+export PATH=$PATH:/usr/local/hbase/bin
 ```
 
 然后，运行以下命令使环境变量生效：
