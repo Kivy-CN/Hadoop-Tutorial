@@ -507,7 +507,7 @@ HBase 的安装过程通常包括以下步骤：
 
 1. **安装 Java**：HBase 需要 Java 运行环境，因此首先需要在系统上安装 Java。
 
-2. **安装 Hadoop**：HBase 是 Hadoop 的一部分，因此需要在系统上安装 Hadoop。这一步上一单元已经完成了。。
+2. **安装 Hadoop**：HBase 需要在系统上安装 Hadoop。这一步上一单元已经完成了。。
 
 3. **下载和解压 HBase**：可以从 Apache HBase 的官方网站下载最新的 HBase 发行版。然后，使用以下命令解压下载的 HBase 压缩文件：
 
