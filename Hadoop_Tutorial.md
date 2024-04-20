@@ -344,6 +344,66 @@ Hadoop主要有以下三种安装和运行方式：
 5. **数据存储和处理**：Hadoop的主要功能是存储和处理大规模数据。可以使用HDFS命令行工具来操作HDFS中的数据，例如创建目录、上传文件、下载文件等。也可以使用Hadoop的其他工具和库来处理数据，例如Hive和Pig。
 
 
+## 2.5 Hadoop的安装
+
+以下是在 Ubuntu Server 22.04 上安装 Hadoop 的步骤：
+
+1. **更新系统**：首先，更新你的系统到最新状态。
+
+```bash
+sudo apt-get update
+sudo apt-get upgrade
+```
+
+2. **安装 Java**：Hadoop 需要 Java 运行环境，你可以通过以下命令安装 OpenJDK：
+
+```bash
+sudo apt-get install openjdk-8-jdk
+```
+
+3. **下载 Hadoop**：从 Apache Hadoop 的官方网站下载最新稳定版的 Hadoop。你可以使用 `wget` 命令来下载：
+
+```bash
+wget https://mirrors.tuna.tsinghua.edu.cn/apache/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
+```
+
+请注意，上述链接可能会随着新版本的发布而改变。
+
+4. **解压 Hadoop**：使用 `tar` 命令解压下载的文件：
+
+```bash
+tar xzf hadoop-3.4.0.tar.gz
+mv hadoop-3.4.0 /usr/local/hadoop
+```
+
+5. **配置 Hadoop**：配置 Hadoop 的环境变量。打开 `~/.bashrc` 文件，并在文件末尾添加以下行：
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+export PATH=/usr/local/hadoop/bin:$PATH
+export PATH=/usr/local/hadoop/sbin:$PATH
+```
+
+其中，`/path/to/hadoop-3.3.1` 应该替换为你的 Hadoop 安装目录。
+
+然后，运行以下命令使配置生效：
+
+```bash
+source ~/.bashrc
+```
+
+6. **验证安装**：运行以下命令验证 Hadoop 是否安装成功：
+
+```bash
+hadoop version
+```
+
+如果安装成功，这个命令应该会输出你安装的 Hadoop 版本信息。
+
+以上就是在 Ubuntu Server 22.04 上安装 Hadoop 的步骤。请注意，这些步骤只是安装了 Hadoop 的基本组件，并没有配置 Hadoop 集群。如果你需要设置 Hadoop 集群，你还需要进行额外的配置。
 
 # 3. 分布式文件系统HDFS
 
