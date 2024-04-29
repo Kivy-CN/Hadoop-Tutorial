@@ -101,6 +101,23 @@ start-hbase.sh
 
 6. **HBase Admin UI**：HBase 提供了一个 Web UI，可以通过浏览器访问它来查看 HBase 的状态和性能指标，以及执行一些管理操作。
 
+
+```Bash
+# 进入HBase shell
+hbase shell
+
+# 创建一个名为'test_table'的表，有一个名为'test_family'的列族
+create 'test_table', 'test_family'
+
+# 插入一些随机数据
+put 'test_table', 'row1', 'test_family:col1', 'value1'
+put 'test_table', 'row2', 'test_family:col2', 'value2'
+put 'test_table', 'row3', 'test_family:col3', 'value3'
+
+# 扫描并打印表中的所有数据
+scan 'test_table'
+```
+
 ## 4.6. HBase操作的Python演示
 
 在HBase shell中，可以使用以下命令来删除所有的表：
@@ -121,8 +138,8 @@ list.each { |table| disable table; drop table }
 ```bash
 start-all.sh
 start-hbase.sh
-​hbase thrift start
-pip install happybase hbase
+nohup hbase thrift start > hbase_thrift.log 2>&1 &
+pip install happybase hbase --break-system-packages
 ```
 
 然后，可以使用以下 Python 代码来操作 HBase：

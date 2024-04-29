@@ -892,32 +892,88 @@ OLTP（Online Transaction Processing，在线事务处理）和 OLAP（Online An
 
 ## 5.2.	Hive的安装
 
-Hive 的安装过程通常包括以下步骤：
+Hive 的安装过程通常包括以下前置步骤：
 
-1. **安装 Java**：Hive 需要 Java 运行环境，因此首先需要在系统上安装 Java。可以使用以下命令在 Ubuntu 上安装 Java：
+* **已经安装 Java**：Hive 需要 Java 运行环境，因此首先需要在系统上安装 Java 8。
 
-```bash
-sudo apt update
-sudo apt install default-jdk
-```
+* **已经安装 Hadoop**：Hive 需要在系统上安装 Hadoop。这一步上一单元已经完成了。。
 
-2. **安装 Hadoop**：Hive 是建立在 Hadoop 上的，因此需要在系统上安装 Hadoop。可以从 Apache Hadoop 的官方网站下载最新的 Hadoop 发行版。
+以下是在已经安装好 Hadoop 的基础上，安装 Hive 的步骤：
 
-3. **下载和解压 Hive**：可以从 Apache Hive 的官方网站下载最新的 Hive 发行版。然后，使用以下命令解压下载的 Hive 压缩文件：
+1. **下载 Hive**：可以从 Apache Hive 的官方网站下载最新的 Hive 发行版：
 
 ```bash
-tar xzf apache-hive-x.y.z-bin.tar.gz
+wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/hive/hive-4.0.0/apache-hive-4.0.0-bin.tar.gz
 ```
 
-4. **配置 Hive**：需要编辑 Hive 的配置文件（`hive-site.xml`），设置 Hive 的运行模式（本地模式或 MapReduce 模式）和 Hive 数据的存储路径等。
+
+2. **解压 Hive**：使用 `tar` 命令解压下载的文件：
+
+```Bash
+tar xzf apache-hive-4.0.0-bin.tar.gz
+sudo mv apache-hive-4.0.0-bin /usr/local/hive
+```
+
+3. **配置 Hive**：需要先创建`hive-default.xml`文件，然后编辑 Hive 的配置文件（`hive-site.xml`），设置 Hive 的运行模式（本地模式或 MapReduce 模式）和 Hive 数据的存储路径等。
+
+```Bash
+cd /usr/local/hive/conf
+mv hive-default.xml.template hive-default.xml
+nano hive-site.xml
+```
+
+在`hive-site.xml`中添加如下配置信息：
+```XML
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>hive</value>
+        <description>username to use against metastore database</description>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>hive</value>
+        <description>password to use against metastore database</description>
+    </property>
+</configuration>
+```
+
+4. **配置 Hive 环境变量**：编辑 `~/.bashrc` 文件，添加 Hive 的环境变量。你可以使用以下命令打开配置文件：
+
+```bash
+nano ~/.bashrc
+```
+
+然后，添加以下内容到文件末尾：
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+export PATH=/usr/local/hadoop/bin:$PATH
+export PATH=/usr/local/hadoop/sbin:$PATH
+export PATH=$PATH:/usr/local/hbase/bin
+export HIVE_HOME=/usr/local/hive
+export PATH=$PATH:$HIVE_HOME/bin
+```
+
+然后，运行以下命令使环境变量生效：
+
+```bash
+source ~/.bashrc
+```
 
 5. **启动 Hive**：最后，可以使用 Hive 的启动脚本启动 Hive：
 
 ```bash
-./bin/hive
+hive
 ```
 
 以上是在单个节点上安装 Hive 的基本步骤。在生产环境中，可能需要在多个节点上安装 Hive，以构建一个分布式的 Hive 集群。这需要更复杂的配置和更多的步骤。
+
 
 ## 5.3. Hive的适用场景
 
@@ -1012,7 +1068,7 @@ nano /usr/local/hadoop/etc/hadoop/core-site.xml
 
 ```bash
 hive --service hiveserver2 &
-pip install pyhive thrift thrift_sasl
+pip install pyhive thrift thrift_sasl --break-system-packages
 ```
 
 然后，可以使用以下 Python 代码来操作 Hive：
@@ -1021,7 +1077,7 @@ pip install pyhive thrift thrift_sasl
 from pyhive import hive
 
 # 连接到 Hive
-conn = hive.Connection(host='localhost', port=10000, username='hdoop')
+conn = hive.Connection(host='localhost', port=10000, username='hadoop')
 
 # 创建一个 cursor
 cursor = conn.cursor()
