@@ -47,10 +47,6 @@ nano /usr/local/hbase/conf/hbase-site.xml
         <value>false</value>
     </property>
     <property>
-      <name>hbase.wal.provider</name>
-        <value>filesystem</value>
-    </property>
-    <property>
         <name>hbase.master.info.port</name>
         <value>16010</value>
     </property>
@@ -60,6 +56,20 @@ nano /usr/local/hbase/conf/hbase-site.xml
     </property>
 </configuration>
 ```
+
+然后修改`/usr/local/hbase/conf/hbase-env.sh`
+
+```bash
+nano /usr/local/hbase/conf/hbase-env.sh
+```
+
+添加下面的内容：
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+export HBASE_CLASSPATH=/usr/local/hbase/conf 
+export HBASE_MANAGES_ZK=true   
+```
+
 
 4. **配置 HBase 环境变量**：编辑 `~/.bashrc` 文件，添加 HBase 的环境变量。你可以使用以下命令打开配置文件：
 
