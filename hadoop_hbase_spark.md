@@ -17,14 +17,15 @@ start-hbase.sh
 ### 1.3 启动Spark
 
 ```bash
-start-all.sh
+start-master.sh
+start-worker.sh spark://localhost:7077
 ```
 
 通过访问以下URL来确认这些组件是否已经成功启动：
 
 - Hadoop: http://localhost:9870/
 - HBase: http://localhost:16010/
-- Spark: http://localhost:4040/
+- Spark: http://localhost:8080/
 
 ## 2 Python使用
 

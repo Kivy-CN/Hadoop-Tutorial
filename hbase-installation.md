@@ -50,6 +50,14 @@ nano /usr/local/hbase/conf/hbase-site.xml
       <name>hbase.wal.provider</name>
         <value>filesystem</value>
     </property>
+    <property>
+        <name>hbase.master.info.port</name>
+        <value>16010</value>
+    </property>
+    <property>
+        <name>hbase.regionserver.info.port</name>
+        <value>16020</value>
+    </property>
 </configuration>
 ```
 

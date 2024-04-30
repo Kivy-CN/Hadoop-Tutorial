@@ -735,6 +735,14 @@ sudo nano /usr/local/hbase/conf/hbase-site.xml
       <name>hbase.wal.provider</name>
         <value>filesystem</value>
     </property>
+    <property>
+        <name>hbase.master.info.port</name>
+        <value>16010</value>
+    </property>
+    <property>
+        <name>hbase.regionserver.info.port</name>
+        <value>16020</value>
+    </property>
 </configuration>
 ```
 
@@ -1380,14 +1388,15 @@ start-hbase.sh
 启动Spark
 
 ```bash
-start-all.sh
+start-master.sh
+start-worker.sh spark://localhost:7077
 ```
 
 通过访问以下URL来确认这些组件是否已经成功启动：
 
 - Hadoop: http://localhost:9870/
 - HBase: http://localhost:16010/
-- Spark: http://localhost:4040/
+- Spark: http://localhost:8080/
 
 ### 7.5.2 Python使用
 
