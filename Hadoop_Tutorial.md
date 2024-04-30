@@ -1277,38 +1277,43 @@ Apache Spark 适用于以下几种场景：
 
 4. **容错性**：Spark 的 RDD 提供了一种高效的容错机制。
 
-## 7.3.	Spark的安装
+## 7.3. Spark的安装
 
-安装 Spark 的过程可以分为以下几个步骤：
+如果你的系统已经运行了 Hadoop 3，你可以按照以下步骤下载并安装 Spark：
+如果你想将 Spark 安装在 `/usr/local/spark` 目录下，你可以按照以下步骤操作：
 
-1. **下载 Spark**：首先，需要从 Spark 的官方网站下载最新的 Spark 发行版。可以选择预编译的版本，这样可以省去自己编译的步骤。
-
-```bash
-wget https://downloads.apache.org/spark/spark-3.1.2/spark-3.1.2-bin-hadoop3.2.tgz
-```
-
-2. **解压 Spark**：下载完成后，需要解压下载的文件。
+1. **下载 Spark**：你可以使用 `wget` 命令来下载 Spark。以下是在终端中运行的命令：
 
 ```bash
-tar xvf spark-3.1.2-bin-hadoop3.2.tgz
+wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3.tgz
 ```
 
-3. **设置环境变量**：为了方便使用 Spark，可以将 Spark 的 bin 目录添加到 PATH 环境变量中。还需要设置 `SPARK_HOME` 环境变量，指向 Spark 安装目录。
+2. **解压 Spark**：下载完成后，你需要使用 `tar` 命令来解压 Spark。然后，你可以使用 `mv` 命令将 Spark 移动到 `/usr/local/spark` 目录下。以下是在终端中运行的命令：
 
 ```bash
-export SPARK_HOME=/path/to/spark-3.1.2-bin-hadoop3.2
-export PATH=$PATH:$SPARK_HOME/bin
+tar -xzf spark-3.5.1-bin-hadoop3.tgz
+sudo mv spark-3.5.1-bin-hadoop3 /usr/local/spark
 ```
 
-4. **运行 Spark**：现在，可以运行 Spark 的 shell 了。例如，可以运行 Spark 的 Python shell：
+3. **配置 Spark**：解压并移动完成后，你需要配置 Spark 的环境变量。你可以在你的 `~/.bashrc` 文件中添加以下行：
 
 ```bash
-pyspark
+export SPARK_HOME=/usr/local/spark
+export PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
+export PYSPARK_PYTHON=/usr/bin/python3
 ```
 
-以上步骤是在单机上安装 Spark 的基本步骤。如果想在集群上安装 Spark，还需要配置 Spark 的集群管理器，例如 Standalone、Mesos 或 YARN。
+然后，运行 `source ~/.bashrc` 来应用这些更改。
 
-请注意，运行 Spark 还需要 Java 环境，所以在安装 Spark 之前，需要确保机器上已经安装了 Java。
+4. **启动 Spark**：最后，你可以使用 `start-master.sh` 和 `start-worker.sh` 脚本来启动 Spark 的 master 和 worker 节点。以下是在终端中运行的命令：
+
+```bash
+start-master.sh
+start-worker.sh spark://localhost:7077
+```
+
+现在，你应该可以在你的浏览器中访问 `http://localhost:8080` 来查看 Spark 的 Web UI。
+
 
 ## 7.4. Spark的使用
 
