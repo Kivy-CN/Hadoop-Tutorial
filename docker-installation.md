@@ -7,30 +7,43 @@
 sudo apt-get update
 ```
 
-2. 安装Docker：
+2. 添加源：
 ```bash
-sudo apt-get install docker.io
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
 ```
 
-3. 启动Docker服务并设置为开机启动：
+3. 安装：
 ```bash
-sudo systemctl start docker
-sudo systemctl enable docker
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
 4. 验证Docker是否成功安装：
 ```bash
-docker --version
+sudo docker --version
+sudo docker run hello-world
 ```
 
 5. 安装Docker Compose：
 ```bash
-sudo apt-get install docker-compose
+sudo apt-get update
+sudo apt-get install docker-compose-plugin
 ```
 
 6. 验证Docker Compose是否成功安装：
 ```bash
-docker-compose --version
+sudo docker compose --version
 ```
 
 以上命令应该显示Docker和Docker Compose的版本信息，表示它们已经成功安装。
