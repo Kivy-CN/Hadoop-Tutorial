@@ -13,10 +13,12 @@ wget https://mirrors.tuna.tsinghua.edu.cn/apache/zookeeper/current/apache-zookee
 
 ```bash
 tar -xzf apache-zookeeper-3.9.2-bin.tar.gz
-mv apache-zookeeper-3.9.2-bin /usr/local/zookeeper
+sudo mv apache-zookeeper-3.9.2-bin /usr/local/zookeeper
 ```
 
 3. 设置环境变量：
+
+在`~/.bashrc`文件中添加以下内容：
 
 ```bash
 export ZOOKEEPER_HOME=/usr/local/zookeeper
@@ -26,7 +28,7 @@ export PATH=$PATH:$ZOOKEEPER_HOME/bin
 4. 进入ZooKeeper目录下的`conf`目录，并将`zoo_sample.cfg`文件重命名为`zoo.cfg`：
 
 ```bash
-cd zookeeper/conf
+cd /usr/local/zookeeper/conf
 cp zoo_sample.cfg zoo.cfg
 ```
 
