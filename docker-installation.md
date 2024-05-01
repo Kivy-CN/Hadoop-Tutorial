@@ -63,7 +63,7 @@ sudo nano /etc/docker/daemon.json
 
 ```json
 {
- "registry-mirrors": ["https://registry.docker-cn.com"]
+ "registry-mirrors": ["http://hub-mirror.c.163.com"]
 }
 ```
 
