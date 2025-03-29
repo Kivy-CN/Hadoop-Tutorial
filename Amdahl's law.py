@@ -10,7 +10,7 @@ plt.rcParams.update({'font.sans-serif': ['SimHei'], 'axes.unicode_minus': False}
 PARALLEL_PORTION = 0.9  # 90% 的工作可以并行化
 
 # 总工作量
-TOTAL_WORK = 10**8 #修改这个参数来改变工作量，试试 10^7, 10^8, 10^9
+TOTAL_WORK = 10**9 #修改这个参数来改变工作量，试试 10^7, 10^8, 10^9
 
 # 模拟计算密集型工作的函数
 def compute_work(args):
@@ -58,7 +58,7 @@ def amdahl_speedup(p, n):
 
 # 测试不同进程数
 def main():
-    process_counts = [1, 2, 4, 8, 16]
+    process_counts = [1, 2, 4, 8, 16, 32]
     execution_times = []
     speedups = []
     theoretical_speedups = []
