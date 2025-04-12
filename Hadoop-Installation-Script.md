@@ -2,17 +2,18 @@
 
 这是一个为Ubuntu 24.04设计的Hadoop完整安装脚本，使用USTC和TUNA镜像源以提高在中国大陆的下载速度。
 
-
 ```bash
 #!/bin/bash
 
-# Ubuntu 24.04 Hadoop安装脚本
-# 使用USTC和TUNA镜像源以提高在中国大陆的下载速度
+# =========================================
+# Ubuntu 24.04 Hadoop 3.4.1 安装脚本 (精简版)
+# =========================================
 
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # 无颜色
 
 # 配置变量
@@ -25,192 +26,319 @@ DATA_DIR="/hadoop/data"
 NAMENODE_DIR="$DATA_DIR/namenode"
 DATANODE_DIR="$DATA_DIR/datanode"
 LOG_DIR="/hadoop/logs"
+CONFIG_ONLY=false
+
+# 获取主机名
+HOSTNAME=$(hostname)
+# PUBLIC_IP将由select_network_interface函数设置
+
+# 记录日志
+log_file="/tmp/hadoop_install_$(date +%Y%m%d_%H%M%S).log"
+exec > >(tee -a "$log_file") 2>&1
 
 # 输出带颜色的信息
-info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+section() { echo -e "\n${BLUE}=== $1 ===${NC}"; }
+
+# 解析命令行参数
+parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --config-only) CONFIG_ONLY=true ;;
+            --help) show_help; exit 0 ;;
+            *) error "未知参数: $1" ;;
+        esac
+        shift
+    done
 }
 
-warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+show_help() {
+    echo "Hadoop 3.4.1 安装脚本 - Ubuntu 24.04 + Java 11"
+    echo "用法: $0 [选项]"
+    echo "选项:"
+    echo "  --config-only    仅更新配置文件，不重新下载和安装Hadoop"
+    echo "  --help           显示此帮助信息"
 }
 
-error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-    exit 1
+# 选择网络接口 - 修复后的版本
+select_network_interface() {
+    section "选择网络接口"
+    
+    # 获取所有网络接口及其IP
+    echo "系统中可用的网络接口:"
+    echo "----------------------"
+    
+    # 创建数组存储网卡及其IP
+    local interfaces=()
+    local ips=()
+    local count=0
+    
+    # 使用ip addr命令获取网卡和IP信息，并去掉子网前缀
+    while read -r iface ip_with_prefix; do
+        # 从CIDR表示法中提取IP地址部分
+        local ip=$(echo "$ip_with_prefix" | cut -d/ -f1)
+        
+        # 只处理有效的数据行
+        if [[ -n "$iface" && -n "$ip" && "$ip" != "127.0.0.1" ]]; then
+            interfaces+=("$iface")
+            ips+=("$ip")
+            # 显示给用户 - 简化格式避免混淆
+            echo "[$count] $iface: $ip"
+            count=$((count+1))
+        fi
+    done < <(ip -4 -o addr show | awk '{print $2, $4}')
+    
+    # 如果没有找到任何接口
+    if [ $count -eq 0 ]; then
+        warn "未找到任何可用网络接口，使用默认检测方式"
+        PUBLIC_IP=$(ip route get 1 | awk '{print $7; exit}' 2>/dev/null || hostname -I | awk '{print $1}')
+        info "自动检测到IP: $PUBLIC_IP"
+        return
+    fi
+    
+    # 让用户选择网卡
+    local selected
+    while true; do
+        read -p "请选择用于Hadoop服务的网络接口 [0-$((count-1))]: " selected
+        
+        if [[ "$selected" =~ ^[0-9]+$ ]] && [ "$selected" -lt "$count" ]; then
+            PUBLIC_IP="${ips[$selected]}"
+            info "已选择 ${interfaces[$selected]}: $PUBLIC_IP 作为Hadoop服务IP"
+            break
+        else
+            warn "无效的选择，请重试"
+        fi
+    done
 }
 
-# 替换apt源为USTC镜像
-replace_apt_sources() {
-    info "替换apt源为USTC镜像..."
-    sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup || warn "备份sources.list失败，继续执行"
-    sudo bash -c 'cat > /etc/apt/sources.list << EOF
-deb https://mirrors.ustc.edu.cn/ubuntu/ noble main restricted universe multiverse
-deb https://mirrors.ustc.edu.cn/ubuntu/ noble-updates main restricted universe multiverse
-deb https://mirrors.ustc.edu.cn/ubuntu/ noble-backports main restricted universe multiverse
-deb https://mirrors.ustc.edu.cn/ubuntu/ noble-security main restricted universe multiverse
-EOF'
+# 检查系统要求
+check_system() {
+    section "检查系统环境"
+    
+    # 检查是否为Ubuntu 24.04
+    if ! grep -q "Ubuntu" /etc/os-release || ! grep -q "24.04" /etc/os-release; then
+        warn "此脚本专为Ubuntu 24.04设计，当前系统可能不兼容"
+        read -p "是否继续? (y/n): " confirm
+        if [[ $confirm != "y" && $confirm != "Y" ]]; then
+            error "安装已取消"
+        fi
+    else
+        info "系统版本: Ubuntu 24.04 √"
+    fi
+    
+    # 检查内存
+    total_mem=$(free -m | awk '/^Mem:/{print $2}')
+    if [[ $total_mem -lt 2048 ]]; then
+        warn "内存小于2GB (${total_mem}MB)，Hadoop性能可能受影响"
+    else
+        info "内存大小: ${total_mem}MB √"
+    fi
+    
+    # 确保root权限
+    if [[ $EUID -ne 0 ]]; then
+        error "请使用sudo或root用户运行此脚本"
+    fi
+    
+    info "主机名: $HOSTNAME"
 }
 
 # 更新系统并安装依赖
 update_system() {
+    section "更新系统和安装依赖"
     info "更新系统并安装依赖..."
+    
+    # 安装必要的软件包
     sudo apt update || error "更新软件源失败"
-    sudo apt upgrade -y || warn "升级软件包失败，继续执行"
-    sudo apt install -y $JAVA_VERSION openssh-server openssh-client pdsh curl wget net-tools || error "安装依赖失败"
+    sudo apt install -y $JAVA_VERSION openssh-server openssh-client pdsh curl wget net-tools htop ufw || error "安装依赖失败"
+    
+    # 设置JAVA_HOME
+    JAVA_HOME_PATH=$(readlink -f /usr/bin/java | sed 's:/bin/java::')
+    if [ -z "$JAVA_HOME_PATH" ] || [[ "$JAVA_HOME_PATH" != *"java-11"* ]]; then
+        JAVA_HOME_PATH=$(find /usr/lib/jvm -maxdepth 1 -name "*java-11*" | head -1)
+    fi
+    
+    if [ -n "$JAVA_HOME_PATH" ]; then
+        echo "export JAVA_HOME=$JAVA_HOME_PATH" | sudo tee /etc/profile.d/jdk.sh > /dev/null
+        source /etc/profile.d/jdk.sh
+        info "JAVA_HOME已设置为: $JAVA_HOME_PATH"
+    else
+        warn "无法自动检测JAVA_HOME路径，需手动设置"
+    fi
+    
+    # 记录JAVA_HOME以供后续使用
+    JAVA_HOME_DETECTED=$JAVA_HOME_PATH
 }
 
 # 创建Hadoop用户并配置SSH
 setup_hadoop_user() {
+    section "创建用户和配置SSH"
     info "创建Hadoop用户并配置SSH..."
+    
     # 检查用户是否存在
     if ! id -u $HADOOP_USER &>/dev/null; then
         sudo useradd -m -s /bin/bash $HADOOP_USER || error "创建用户失败"
-        echo "请为${HADOOP_USER}用户设置密码:"
-        sudo passwd $HADOOP_USER || warn "设置密码失败，但将继续安装过程"
+        echo "hadoop:hadoop" | sudo chpasswd || warn "设置默认密码失败"
+        info "已创建用户 $HADOOP_USER 密码默认为 'hadoop'"
     else
-        info "用户${HADOOP_USER}已存在，跳过创建步骤"
+        info "用户 ${HADOOP_USER} 已存在，跳过创建步骤"
     fi
     
     # 确保SSH服务正确安装和运行
-    info "确保SSH服务正确安装和运行..."
-    sudo systemctl enable ssh || warn "启用SSH服务失败"
-    sudo systemctl start ssh || warn "启动SSH服务失败"
+    sudo systemctl enable ssh
+    sudo systemctl start ssh
     
-    # 检查SSH服务状态
-    if ! systemctl is-active --quiet ssh; then
-        warn "SSH服务未在运行，尝试重新配置和启动..."
-        sudo apt purge -y openssh-server
-        sudo apt install -y openssh-server
-        sudo systemctl enable ssh
-        sudo systemctl start ssh
-        
-        if ! systemctl is-active --quiet ssh; then
-            error "SSH服务无法启动，请手动检查SSH配置"
-        fi
-    else
-        info "SSH服务已在运行"
-    fi
+    # 确保/etc/hosts正确配置
+    sudo bash -c "cat > /etc/hosts << EOF
+127.0.0.1 localhost
+$PUBLIC_IP $HOSTNAME
+
+# 以下是IPv6配置
+::1 localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+EOF"
     
-    # 确保本地hostname解析正确
-    info "配置本地主机名解析..."
-    hostname=$(hostname)
-    if ! grep -q "127.0.0.1 $hostname" /etc/hosts; then
-        echo "127.0.0.1 $hostname" | sudo tee -a /etc/hosts
-    fi
-    if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
-        echo "127.0.0.1 localhost" | sudo tee -a /etc/hosts
-    fi
-    
-    # 为hadoop用户配置SSH免密登录
+    # 配置hadoop用户SSH免密登录
     sudo -u $HADOOP_USER bash -c "
         mkdir -p ~/.ssh
         ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
         cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
         chmod 0600 ~/.ssh/authorized_keys
         
-        # 添加SSH客户端配置
-        echo 'Host *
+        # 配置SSH客户端
+        cat > ~/.ssh/config << EOF
+Host localhost
     StrictHostKeyChecking no
-    UserKnownHostsFile=/dev/null' > ~/.ssh/config
+    UserKnownHostsFile=/dev/null
+    User $HADOOP_USER
+
+Host $HOSTNAME
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
+    User $HADOOP_USER
+
+Host 127.0.0.1
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
+    User $HADOOP_USER
+
+Host $PUBLIC_IP
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
+    User $HADOOP_USER
+EOF
         chmod 0600 ~/.ssh/config
-    " || warn "配置SSH失败，但将继续安装过程"
-    
-    # 测试SSH连接
-    info "测试SSH本地连接..."
-    ssh_test_output=$(sudo -u $HADOOP_USER ssh -o ConnectTimeout=5 localhost echo "SSH连接测试成功" 2>&1)
-    if [[ "$ssh_test_output" == *"SSH连接测试成功"* ]]; then
-        info "SSH连接测试成功"
-    else
-        warn "SSH连接测试失败: $ssh_test_output"
-        warn "尝试另一种连接方法..."
-        sudo -u $HADOOP_USER ssh -o ConnectTimeout=5 127.0.0.1 echo "SSH连接测试成功" || warn "SSH连接到127.0.0.1也失败"
-        
-        # 如果仍然失败，提供详细的错误信息
-        warn "请检查SSH配置:"
-        warn "1. SSH服务状态: $(systemctl status ssh | grep Active)"
-        warn "2. SSH配置文件: $(grep "PermitRootLogin\|PasswordAuthentication" /etc/ssh/sshd_config)"
-        warn "3. 防火墙状态: $(sudo ufw status)"
-    fi
+    "
 }
 
 # 下载并安装Hadoop
 download_and_install_hadoop() {
-    info "下载并安装Hadoop ${HADOOP_VERSION}..."
-    local download_success=false
+    section "下载和安装Hadoop"
     
-    # 尝试从USTC镜像下载
-    info "尝试从USTC镜像下载..."
-    if wget -c https://mirrors.ustc.edu.cn/apache/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz; then
-        download_success=true
-    else
-        warn "USTC镜像下载失败，尝试TUNA镜像..."
-        # 尝试从TUNA镜像下载
-        if wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz; then
-            download_success=true
-        else
-            warn "TUNA镜像下载失败，尝试Apache官方镜像..."
-            # 尝试从Apache官方镜像下载
-            if wget -c https://dlcdn.apache.org/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz; then
-                download_success=true
-            else
-                error "所有下载源尝试失败，请检查网络连接或Hadoop版本是否存在"
-            fi
-        fi
+    # 检查是否已安装或为配置模式
+    if [ "$CONFIG_ONLY" = true ]; then
+        info "配置模式：跳过下载和安装"
+        return
     fi
     
+    if [ -d "$HADOOP_HOME" ]; then
+        info "Hadoop目录已存在，跳过下载和安装步骤"
+        # 确保目录权限正确
+        sudo chown -R $HADOOP_USER:$HADOOP_USER $HADOOP_HOME
+        return
+    fi
+    
+    info "下载并安装Hadoop ${HADOOP_VERSION}..."
+    
+    # 创建一个临时目录用于下载
+    local temp_dir=$(mktemp -d)
+    cd $temp_dir
+    
+    # 尝试从不同镜像下载
+    local hadoop_archive="hadoop-$HADOOP_VERSION.tar.gz"
+    local mirrors=(
+        "https://mirrors.ustc.edu.cn/apache/hadoop/common/hadoop-$HADOOP_VERSION/$hadoop_archive"
+        "https://mirrors.tuna.tsinghua.edu.cn/apache/hadoop/common/hadoop-$HADOOP_VERSION/$hadoop_archive"
+    )
+    
+    for mirror in "${mirrors[@]}"; do
+        if wget --progress=bar:force -O $hadoop_archive $mirror; then
+            break
+        fi
+    done
+    
     # 解压并安装
-    info "解压并安装Hadoop..."
-    sudo tar -xzf hadoop-$HADOOP_VERSION.tar.gz || error "解压Hadoop安装包失败"
-    sudo rm -rf $HADOOP_HOME 2>/dev/null || true  # 如果目录已存在先删除
+    sudo tar -xzf $hadoop_archive || error "解压Hadoop安装包失败"
+    sudo rm -rf $HADOOP_HOME
     sudo mv hadoop-$HADOOP_VERSION $HADOOP_HOME || error "移动Hadoop目录失败"
     
     # 创建必要的目录
-    sudo mkdir -p $NAMENODE_DIR $DATANODE_DIR $LOG_DIR || error "创建数据目录失败"
+    sudo mkdir -p $NAMENODE_DIR $DATANODE_DIR $LOG_DIR $DATA_DIR/tmp
     
     # 设置权限
-    sudo chown -R $HADOOP_USER:$HADOOP_USER $HADOOP_HOME || warn "修改Hadoop目录权限失败"
-    sudo chown -R $HADOOP_USER:$HADOOP_USER $DATA_DIR || warn "修改数据目录权限失败"
-    sudo chown -R $HADOOP_USER:$HADOOP_USER $LOG_DIR || warn "修改日志目录权限失败"
+    sudo chown -R $HADOOP_USER:$HADOOP_USER $HADOOP_HOME
+    sudo chown -R $HADOOP_USER:$HADOOP_USER $DATA_DIR
+    sudo chown -R $HADOOP_USER:$HADOOP_USER $LOG_DIR
     
-    # 清理下载文件
-    rm -f hadoop-$HADOOP_VERSION.tar.gz
+    # 确保二进制文件有执行权限
+    sudo chmod -R 755 $HADOOP_HOME/bin $HADOOP_HOME/sbin
+    
+    # 清理
+    cd /
+    rm -rf $temp_dir
 }
 
 # 配置Hadoop
 configure_hadoop() {
+    section "配置Hadoop环境"
     info "配置Hadoop环境..."
+    
+    # 确保目录存在
+    sudo mkdir -p $NAMENODE_DIR $DATANODE_DIR $LOG_DIR $DATA_DIR/tmp
+    sudo chown -R $HADOOP_USER:$HADOOP_USER $DATA_DIR $LOG_DIR
     
     # 配置hadoop-env.sh
     sudo -u $HADOOP_USER bash -c "cat > $HADOOP_CONF_DIR/hadoop-env.sh << EOF
-export JAVA_HOME=\$(readlink -f /usr/bin/java | sed 's:/bin/java::')
+# Java路径设置
+export JAVA_HOME=$JAVA_HOME_DETECTED
+
+# 基本环境变量
 export HADOOP_HOME=$HADOOP_HOME
 export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
 export HADOOP_LOG_DIR=$LOG_DIR
-export HADOOP_PID_DIR=/tmp
-export HADOOP_HEAPSIZE=1000
-export HADOOP_NAMENODE_OPTS=\"-Dhadoop.security.logger=INFO,RFAS -Xmx1024m\"
-export HADOOP_DATANODE_OPTS=\"-Dhadoop.security.logger=ERROR,RFAS -Xmx1024m\"
-export PDSH_RCMD_TYPE=ssh
-EOF" || warn "配置hadoop-env.sh失败"
+export HADOOP_OS_TYPE=\${HADOOP_OS_TYPE:-\$(uname -s)}
 
-    # 配置core-site.xml
+# 内存配置
+export HADOOP_HEAPSIZE_MAX=1024m
+export HADOOP_HEAPSIZE_MIN=512m
+
+# JVM设置
+export HADOOP_OPTS=\"\$HADOOP_OPTS -Djava.net.preferIPv4Stack=true\"
+EOF"
+
+    # 配置core-site.xml - 使用选定的IP地址
     sudo -u $HADOOP_USER bash -c "cat > $HADOOP_CONF_DIR/core-site.xml << EOF
 <?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>
 <configuration>
     <property>
         <name>fs.defaultFS</name>
-        <value>hdfs://localhost:9000</value>
+        <value>hdfs://$PUBLIC_IP:9000</value>
+        <description>HDFS的URI，使用选定的IP地址</description>
     </property>
     <property>
-        <name>io.file.buffer.size</name>
-        <value>131072</value>
+        <name>hadoop.tmp.dir</name>
+        <value>$DATA_DIR/tmp</value>
+        <description>Hadoop临时目录</description>
     </property>
 </configuration>
-EOF" || warn "配置core-site.xml失败"
+EOF"
 
-    # 配置hdfs-site.xml
+    # 配置hdfs-site.xml - 使用选定的IP地址
     sudo -u $HADOOP_USER bash -c "cat > $HADOOP_CONF_DIR/hdfs-site.xml << EOF
 <?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>
@@ -227,8 +355,27 @@ EOF" || warn "配置core-site.xml失败"
         <name>dfs.replication</name>
         <value>1</value>
     </property>
+    <property>
+        <name>dfs.permissions.enabled</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-address</name>
+        <value>$PUBLIC_IP:9870</value>
+        <description>NameNode Web UI地址</description>
+    </property>
+    <property>
+        <name>dfs.namenode.secondary.http-address</name>
+        <value>$PUBLIC_IP:9868</value>
+        <description>SecondaryNameNode Web UI地址</description>
+    </property>
+    <property>
+        <name>dfs.datanode.http.address</name>
+        <value>$PUBLIC_IP:9864</value>
+        <description>DataNode Web UI地址</description>
+    </property>
 </configuration>
-EOF" || warn "配置hdfs-site.xml失败"
+EOF"
 
     # 配置mapred-site.xml
     sudo -u $HADOOP_USER bash -c "cat > $HADOOP_CONF_DIR/mapred-site.xml << EOF
@@ -240,11 +387,15 @@ EOF" || warn "配置hdfs-site.xml失败"
         <value>yarn</value>
     </property>
     <property>
-        <name>mapreduce.application.classpath</name>
-        <value>\$HADOOP_HOME/share/hadoop/mapreduce/*:\$HADOOP_HOME/share/hadoop/mapreduce/lib/*</value>
+        <name>mapreduce.jobhistory.address</name>
+        <value>$HOSTNAME:10020</value>
+    </property>
+    <property>
+        <name>mapreduce.jobhistory.webapp.address</name>
+        <value>$PUBLIC_IP:19888</value>
     </property>
 </configuration>
-EOF" || warn "配置mapred-site.xml失败"
+EOF"
 
     # 配置yarn-site.xml
     sudo -u $HADOOP_USER bash -c "cat > $HADOOP_CONF_DIR/yarn-site.xml << EOF
@@ -256,172 +407,230 @@ EOF" || warn "配置mapred-site.xml失败"
         <value>mapreduce_shuffle</value>
     </property>
     <property>
-        <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
-        <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+        <name>yarn.resourcemanager.hostname</name>
+        <value>$HOSTNAME</value>
     </property>
     <property>
-        <name>yarn.resourcemanager.hostname</name>
-        <value>localhost</value>
+        <name>yarn.resourcemanager.webapp.address</name>
+        <value>$PUBLIC_IP:8088</value>
+        <description>确保从外部可访问</description>
+    </property>
+    <property>
+        <name>yarn.nodemanager.resource.memory-mb</name>
+        <value>1536</value>
     </property>
 </configuration>
-EOF" || warn "配置yarn-site.xml失败"
+EOF"
 
     # 配置workers文件
-    sudo -u $HADOOP_USER bash -c "cat > $HADOOP_CONF_DIR/workers << EOF
-localhost
-EOF" || warn "配置workers文件失败"
+    sudo -u $HADOOP_USER bash -c "echo '$HOSTNAME' > $HADOOP_CONF_DIR/workers"
+
+    # 创建日志目录
+    sudo mkdir -p $LOG_DIR/yarn/userlogs
+    sudo chown -R $HADOOP_USER:$HADOOP_USER $LOG_DIR
 }
 
 # 配置环境变量
 setup_environment() {
-    info "配置环境变量..."
+    section "配置环境变量"
     
+    # 创建环境变量配置
     sudo bash -c "cat > /etc/profile.d/hadoop.sh << EOF
+export JAVA_HOME=$JAVA_HOME_DETECTED
 export HADOOP_HOME=$HADOOP_HOME
 export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
+export PDSH_RCMD_TYPE=ssh
 export PATH=\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin
-EOF" || warn "配置环境变量失败"
+EOF"
     
-    # 加载环境变量
-    export HADOOP_HOME=$HADOOP_HOME
-    export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
-    export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+    # 为当前会话加载环境变量
+    source /etc/profile.d/hadoop.sh
+    
+    # 添加到hadoop用户的.bashrc
+    sudo -u $HADOOP_USER bash -c "cat >> ~$HADOOP_USER/.bashrc << EOF
+
+# Hadoop环境变量
+export JAVA_HOME=$JAVA_HOME_DETECTED
+export HADOOP_HOME=$HADOOP_HOME
+export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
+export PDSH_RCMD_TYPE=ssh
+export PATH=\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin
+EOF"
 }
 
 # 初始化HDFS
 initialize_hdfs() {
-    info "初始化HDFS NameNode..."
-    sudo -u $HADOOP_USER bash -c "
-        export HADOOP_HOME=$HADOOP_HOME
-        export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
-        export PATH=\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin
-        $HADOOP_HOME/bin/hdfs namenode -format
-    " || warn "初始化HDFS失败"
-}
-
-# 启动Hadoop服务
-start_hadoop() {
-    info "启动Hadoop服务..."
+    section "初始化HDFS文件系统"
     
-    # 再次验证SSH连接
-    info "在启动服务前验证SSH连接..."
-    ssh_test=$(sudo -u $HADOOP_USER ssh -o ConnectTimeout=5 localhost echo "OK" 2>&1)
-    if [[ "$ssh_test" != "OK" ]]; then
-        warn "SSH连接测试失败! 将使用替代方式启动Hadoop..."
-        warn "SSH连接问题: $ssh_test"
+    # 确保目录存在
+    sudo mkdir -p $NAMENODE_DIR $DATANODE_DIR
+    sudo chown -R $HADOOP_USER:$HADOOP_USER $NAMENODE_DIR $DATANODE_DIR
+    
+    # 检查是否需要格式化
+    if [ "$CONFIG_ONLY" = true ] && [ -d "$NAMENODE_DIR/current" ]; then
+        info "NameNode已格式化，跳过格式化步骤"
+    else
+        info "格式化HDFS NameNode..."
+        # 清理旧的数据目录
+        sudo rm -rf $NAMENODE_DIR/* $DATANODE_DIR/*
         
-        # 使用直接命令而不是启动脚本
-        info "直接启动Hadoop服务..."
+        # 执行格式化
         sudo -u $HADOOP_USER bash -c "
+            export JAVA_HOME=$JAVA_HOME_DETECTED
             export HADOOP_HOME=$HADOOP_HOME
             export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
             export PATH=\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin
             
-            # 直接启动服务
-            $HADOOP_HOME/bin/hdfs --daemon start namenode
-            $HADOOP_HOME/bin/hdfs --daemon start datanode
-            $HADOOP_HOME/bin/yarn --daemon start resourcemanager
-            $HADOOP_HOME/bin/yarn --daemon start nodemanager
-        " || warn "启动Hadoop服务失败"
-        return
+            echo 'Y' | $HADOOP_HOME/bin/hdfs namenode -format
+        "
     fi
+}
+
+# 启动Hadoop服务 - 修复了路径问题
+start_hadoop() {
+    section "启动Hadoop服务"
     
-    # 正常启动Hadoop
+    # 停止可能正在运行的服务
     sudo -u $HADOOP_USER bash -c "
+        export JAVA_HOME=$JAVA_HOME_DETECTED
         export HADOOP_HOME=$HADOOP_HOME
         export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
         export PATH=\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin
         
-        # 使用PDSH_RCMD_TYPE=ssh以确保使用ssh
-        export PDSH_RCMD_TYPE=ssh
-        
-        # 启动HDFS和YARN
-        $HADOOP_HOME/sbin/start-dfs.sh
-        $HADOOP_HOME/sbin/start-yarn.sh
-    " || warn "启动Hadoop服务失败"
+        $HADOOP_HOME/sbin/stop-all.sh >/dev/null 2>&1 || true
+        sleep 3
+    "
+    
+    # 创建启动脚本 - 显式使用完整路径
+    sudo -u $HADOOP_USER bash -c "cat > /tmp/start_hadoop.sh << 'EOF'
+#!/bin/bash
+export JAVA_HOME=$JAVA_HOME_DETECTED
+export HADOOP_HOME=$HADOOP_HOME
+export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+export HADOOP_OPTS=\"-Djava.net.preferIPv4Stack=true\"
+
+echo \"====== 启动HDFS服务 ======\"
+$HADOOP_HOME/sbin/start-dfs.sh
+sleep 5
+
+echo \"====== 启动YARN服务 ======\"
+$HADOOP_HOME/sbin/start-yarn.sh
+sleep 5
+
+echo \"====== 启动MapReduce历史服务器 ======\"
+$HADOOP_HOME/bin/mapred --daemon start historyserver
+sleep 2
+
+echo \"====== 检查运行状态 ======\"
+jps
+
+# 创建基础目录
+echo \"====== 创建基础目录 ======\"
+$HADOOP_HOME/bin/hdfs dfs -mkdir -p /user/$HADOOP_USER
+$HADOOP_HOME/bin/hdfs dfs -mkdir -p /tmp
+$HADOOP_HOME/bin/hdfs dfs -chmod 777 /tmp
+$HADOOP_HOME/bin/hdfs dfs -ls /
+
+# 上传测试文件
+echo \"====== 上传测试文件 ======\"
+echo 'Hello Hadoop' > /tmp/test.txt
+$HADOOP_HOME/bin/hdfs dfs -put /tmp/test.txt /user/$HADOOP_USER/
+$HADOOP_HOME/bin/hdfs dfs -ls /user/$HADOOP_USER/
+
+echo \"====== 服务启动完成 ======\"
+echo \"HDFS Web界面: http://$PUBLIC_IP:9870\"
+echo \"YARN Web界面: http://$PUBLIC_IP:8088\"
+echo \"MapReduce作业历史: http://$PUBLIC_IP:19888\"
+EOF"
+    
+    # 替换脚本中的变量为实际值
+    sudo sed -i "s|\$JAVA_HOME_DETECTED|$JAVA_HOME_DETECTED|g" /tmp/start_hadoop.sh
+    sudo sed -i "s|\$HADOOP_HOME|$HADOOP_HOME|g" /tmp/start_hadoop.sh
+    sudo sed -i "s|\$HADOOP_CONF_DIR|$HADOOP_CONF_DIR|g" /tmp/start_hadoop.sh
+    sudo sed -i "s|\$PATH|$PATH|g" /tmp/start_hadoop.sh
+    sudo sed -i "s|\$HADOOP_USER|$HADOOP_USER|g" /tmp/start_hadoop.sh
+    sudo sed -i "s|\$PUBLIC_IP|$PUBLIC_IP|g" /tmp/start_hadoop.sh
+    
+    # 执行启动脚本
+    sudo chmod +x /tmp/start_hadoop.sh
+    sudo -u $HADOOP_USER /tmp/start_hadoop.sh
+    
+    # 验证端口绑定
+    info "验证端口绑定..."
+    sleep 3
+    sudo netstat -tulnp | grep -E "9870|8088|19888" | grep "$PUBLIC_IP" || warn "未发现服务绑定到 $PUBLIC_IP"
 }
 
 # 验证安装
 verify_installation() {
-    info "验证Hadoop安装..."
+    section "验证Hadoop安装"
     
-    # 等待服务启动
-    sleep 15
+    # 检查进程
+    local jps_output=$(sudo -u $HADOOP_USER jps 2>/dev/null || echo "无法执行jps命令")
+    echo "当前Java进程:"
+    echo "$jps_output"
     
-    # 检查进程是否运行
-    jps_output=$(sudo -u $HADOOP_USER jps 2>/dev/null || echo "jps命令执行失败")
-    if echo "$jps_output" | grep -q "NameNode" && \
-       echo "$jps_output" | grep -q "DataNode" && \
-       echo "$jps_output" | grep -q "ResourceManager" && \
-       echo "$jps_output" | grep -q "NodeManager"; then
-        info "Hadoop安装验证成功！"
-        echo "=================================================="
-        echo "HDFS Web界面: http://localhost:9870"
-        echo "YARN Web界面: http://localhost:8088"
-        echo "JPS进程信息:"
-        echo "$jps_output"
-        echo "=================================================="
-    else
-        warn "Hadoop安装验证失败，请检查日志"
-        echo "JPS进程信息:"
-        echo "$jps_output"
-        
-        # 提供一些可能的问题排查提示
-        echo "可能的问题排查建议:"
-        echo "1. 检查SSH免密登录是否配置正确"
-        echo "   尝试: sudo -u $HADOOP_USER ssh localhost"
-        echo "2. 检查Java是否正确安装"
-        echo "   尝试: java -version"
-        echo "3. 检查防火墙是否允许Hadoop端口"
-        echo "   尝试: sudo ufw status"
-        echo "4. 查看Hadoop日志文件: $LOG_DIR"
-        
-        # 尝试手动启动进程
-        echo "尝试手动启动进程..."
-        if ! echo "$jps_output" | grep -q "NameNode"; then
-            echo "启动NameNode..."
-            sudo -u $HADOOP_USER $HADOOP_HOME/bin/hdfs --daemon start namenode
-        fi
-        if ! echo "$jps_output" | grep -q "DataNode"; then
-            echo "启动DataNode..."
-            sudo -u $HADOOP_USER $HADOOP_HOME/bin/hdfs --daemon start datanode
-        fi
-        if ! echo "$jps_output" | grep -q "ResourceManager"; then
-            echo "启动ResourceManager..."
-            sudo -u $HADOOP_USER $HADOOP_HOME/bin/yarn --daemon start resourcemanager
-        fi
-        if ! echo "$jps_output" | grep -q "NodeManager"; then
-            echo "启动NodeManager..."
-            sudo -u $HADOOP_USER $HADOOP_HOME/bin/yarn --daemon start nodemanager
-        fi
-        
-        # 再次检查进程
-        sleep 5
-        echo "重新检查进程..."
-        jps_output2=$(sudo -u $HADOOP_USER jps 2>/dev/null || echo "jps命令执行失败")
-        echo "$jps_output2"
-    fi
+    # 验证网络绑定配置
+    info "验证网络绑定配置..."
+    echo "配置的IP地址: $PUBLIC_IP"
+    sudo netstat -tulnp | grep -E "9870|9000|8088" | grep "$PUBLIC_IP" || warn "未找到绑定到 $PUBLIC_IP 的Hadoop服务"
+    
+    # 总结
+    echo ""
+    echo "====================== Hadoop安装完成 ======================"
+    echo "HDFS Web界面: http://$PUBLIC_IP:9870"
+    echo "YARN Web界面: http://$PUBLIC_IP:8088"
+    echo "MapReduce作业历史: http://$PUBLIC_IP:19888"
+    echo ""
+    echo "HDFS命令示例:"
+    echo "  hdfs dfs -ls /              # 列出根目录"
+    echo "  hdfs dfs -put <本地文件> <HDFS路径>  # 上传文件"
+    echo "================================================================="
 }
 
 # 主函数
 main() {
-    # 移除set -e，转而使用更细粒度的错误处理
-    info "开始在Ubuntu 24.04上安装Hadoop ${HADOOP_VERSION}..."
-    replace_apt_sources
-    update_system
-    setup_hadoop_user
-    download_and_install_hadoop
-    configure_hadoop
-    setup_environment
-    initialize_hdfs
-    start_hadoop
-    verify_installation
-    info "Hadoop安装完成！"
+    # 解析命令行参数
+    parse_args "$@"
+    
+    # 显示脚本标题
+    echo -e "${BLUE}=====================================================${NC}"
+    echo -e "${BLUE}     Hadoop ${HADOOP_VERSION} 安装脚本 - Ubuntu 24.04      ${NC}"
+    echo -e "${BLUE}=====================================================${NC}"
+    
+    # 执行安装流程
+    check_system
+    select_network_interface  # 添加网卡选择功能
+    
+    if [ "$CONFIG_ONLY" = true ]; then
+        info "仅更新配置模式"
+        update_system
+        setup_hadoop_user
+        configure_hadoop
+        setup_environment
+        initialize_hdfs
+        start_hadoop
+        verify_installation
+    else
+        update_system
+        setup_hadoop_user
+        download_and_install_hadoop
+        configure_hadoop
+        setup_environment
+        initialize_hdfs
+        start_hadoop
+        verify_installation
+    fi
+    
+    info "日志文件保存在: $log_file"
+    info "Hadoop安装过程完成!"
 }
 
-# 执行主函数
-main
+# 执行主函数，传递所有命令行参数
+main "$@"
 ```
+
 
 ## 使用方法
 
