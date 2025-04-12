@@ -2,7 +2,7 @@
 
 这是一个为Ubuntu 24.04设计的HBase完整安装脚本，使用USTC和TUNA镜像源以提高在中国大陆的下载速度。
 
-````bash
+```bash
 #!/bin/bash
 
 # Ubuntu 24.04 HBase安装脚本
@@ -28,6 +28,7 @@ DATA_DIR="/hbase/data"
 ZOOKEEPER_DIR="$DATA_DIR/zookeeper"
 LOG_DIR="/hbase/logs"
 TMP_DIR="/hbase/tmp"
+HOSTNAME="localhost"
 
 # 输出带颜色的信息
 info() {
@@ -62,6 +63,49 @@ update_system() {
     sudo apt install -y $JAVA_VERSION ssh pdsh curl wget net-tools lsof
 }
 
+# 配置网络接口
+configure_network() {
+    info "配置网络设置..."
+    
+    # 获取可用的网络接口和IP
+    interfaces=($(ip -o -4 addr show | awk '{print $2 ":" $4}' | cut -d/ -f1 | grep -v "lo"))
+    
+    echo "可用的网络接口:"
+    for i in "${!interfaces[@]}"; do
+        echo "$((i+1)). ${interfaces[$i]}"
+    done
+    
+    # 默认使用localhost
+    HOSTNAME="localhost"
+    
+    # 询问用户是否要选择特定网络接口
+    read -p "是否要选择特定网络接口? (y/n，默认为n使用localhost): " select_interface
+    if [[ "$select_interface" == "y" ]]; then
+        read -p "请选择网络接口编号 (1-${#interfaces[@]}): " interface_num
+        if [[ "$interface_num" =~ ^[0-9]+$ ]] && [ "$interface_num" -ge 1 ] && [ "$interface_num" -le "${#interfaces[@]}" ]; then
+            selected_interface=${interfaces[$((interface_num-1))]}
+            HOSTNAME=$(echo $selected_interface | cut -d: -f2)
+            info "已选择网络接口: $selected_interface, 将使用IP: $HOSTNAME"
+        else
+            warn "无效选择，将使用默认值localhost"
+        fi
+    else
+        info "将使用localhost作为HBase主机名"
+    fi
+    
+    # 检查/etc/hosts文件
+    if ! grep -q "$HOSTNAME" /etc/hosts; then
+        warn "未在/etc/hosts中找到 $HOSTNAME，建议添加对应条目"
+        read -p "是否自动添加到/etc/hosts? (y/n): " add_hosts
+        if [[ "$add_hosts" == "y" ]]; then
+            if [[ "$HOSTNAME" != "localhost" ]]; then
+                sudo bash -c "echo '$HOSTNAME $(hostname)' >> /etc/hosts"
+                info "已添加 $HOSTNAME $(hostname) 到/etc/hosts"
+            fi
+        fi
+    fi
+}
+
 # 检查Hadoop是否已安装
 check_hadoop() {
     info "检查Hadoop是否已安装..."
@@ -78,21 +122,19 @@ check_hadoop() {
     fi
 }
 
-# 创建用户和目录
-setup_user_and_dirs() {
-    info "设置用户和目录..."
+# 创建必要目录
+setup_dirs() {
+    info "设置必要的目录..."
     
-    # 检查用户是否存在
-    if ! id -u $HADOOP_USER &>/dev/null; then
-        sudo useradd -m -s /bin/bash $HADOOP_USER
-        echo "请为${HADOOP_USER}用户设置密码:"
-        sudo passwd $HADOOP_USER
-    else
-        info "用户${HADOOP_USER}已存在，跳过创建步骤"
-    fi
-    
-    # 创建必要的目录
-    sudo mkdir -p $DATA_DIR $ZOOKEEPER_DIR $LOG_DIR $TMP_DIR
+    # 创建必要的目录，仅在不存在时创建
+    for dir in "$DATA_DIR" "$ZOOKEEPER_DIR" "$LOG_DIR" "$TMP_DIR"; do
+        if [ ! -d "$dir" ]; then
+            sudo mkdir -p "$dir"
+            info "创建目录: $dir"
+        else
+            info "目录已存在，跳过创建: $dir"
+        fi
+    done
     
     # 设置权限
     sudo chown -R $HADOOP_USER:$HADOOP_USER $DATA_DIR $LOG_DIR $TMP_DIR
@@ -100,33 +142,42 @@ setup_user_and_dirs() {
 
 # 下载并安装HBase
 download_and_install_hbase() {
-    info "下载并安装HBase ${HBASE_VERSION}..."
-    local download_success=false
+    local archive_file="hbase-$HBASE_VERSION-bin.tar.gz"
     
-    # 尝试从USTC镜像下载
-    info "尝试从USTC镜像下载..."
-    if wget -c https://mirrors.ustc.edu.cn/apache/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz; then
-        download_success=true
+    # 检查是否已下载
+    if [ -f "$archive_file" ]; then
+        info "HBase安装包已下载，跳过下载步骤"
     else
-        warn "USTC镜像下载失败，尝试TUNA镜像..."
-        # 尝试从TUNA镜像下载
-        if wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz; then
+        info "下载HBase ${HBASE_VERSION}..."
+        local download_success=false
+        
+        # 尝试从USTC镜像下载
+        info "尝试从USTC镜像下载..."
+        if wget -c https://mirrors.ustc.edu.cn/apache/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz; then
             download_success=true
         else
-            error "下载失败，请检查网络连接或HBase版本是否存在"
+            warn "USTC镜像下载失败，尝试TUNA镜像..."
+            # 尝试从TUNA镜像下载
+            if wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz; then
+                download_success=true
+            else
+                error "下载失败，请检查网络连接或HBase版本是否存在"
+            fi
         fi
     fi
     
-    # 解压并安装
-    info "解压并安装HBase..."
-    sudo tar -xzf hbase-$HBASE_VERSION-bin.tar.gz
-    sudo mv hbase-$HBASE_VERSION $HBASE_HOME
+    # 检查是否已安装
+    if [ -d "$HBASE_HOME" ]; then
+        info "HBase已安装在 $HBASE_HOME，跳过解压安装步骤"
+    else
+        # 解压并安装
+        info "解压并安装HBase..."
+        sudo tar -xzf $archive_file
+        sudo mv hbase-$HBASE_VERSION $HBASE_HOME
+    fi
     
-    # 设置权限
+    # 无论是否已安装，都确保权限正确
     sudo chown -R $HADOOP_USER:$HADOOP_USER $HBASE_HOME
-    
-    # 清理下载文件
-    rm -f hbase-$HBASE_VERSION-bin.tar.gz
 }
 
 # 配置HBase
@@ -142,7 +193,7 @@ export HBASE_LOG_DIR=$LOG_DIR
 export HBASE_PID_DIR=/tmp
 export HBASE_MANAGES_ZK=true
 export HBASE_HEAPSIZE=1000
-export HBASE_OPTS=\"-XX:+UseConcMarkSweepGC\"
+export HBASE_OPTS=\"-XX:+UseG1GC\"
 export HADOOP_HOME=$HADOOP_HOME
 
 # 防止在某些系统上遇到的IPv6问题
@@ -178,7 +229,7 @@ EOF"
   </property>
   <property>
     <name>hbase.zookeeper.quorum</name>
-    <value>localhost</value>
+    <value>$HOSTNAME</value>
   </property>
   <!-- 内存配置 -->
   <property>
@@ -189,12 +240,21 @@ EOF"
     <name>hbase.hregion.memstore.flush.size</name>
     <value>134217728</value>
   </property>
+  <!-- 网络配置 -->
+  <property>
+    <name>hbase.master.hostname</name>
+    <value>$HOSTNAME</value>
+  </property>
+  <property>
+    <name>hbase.regionserver.hostname</name>
+    <value>$HOSTNAME</value>
+  </property>
 </configuration>
 EOF"
 
     # 配置regionservers文件
     sudo -u $HADOOP_USER bash -c "cat > $HBASE_CONF_DIR/regionservers << EOF
-localhost
+$HOSTNAME
 EOF"
 }
 
@@ -233,7 +293,7 @@ verify_installation() {
        echo "$jps_output" | grep -q "HQuorumPeer"; then
         info "HBase安装验证成功！"
         echo "=================================================="
-        echo "HBase Web界面: http://localhost:16010"
+        echo "HBase Web界面: http://$HOSTNAME:16010"
         echo "JPS进程信息:"
         echo "$jps_output"
         echo "=================================================="
@@ -261,7 +321,7 @@ configure_hbase_with_hdfs() {
         
         # 修改hbase-site.xml中的rootdir配置
         sudo -u $HADOOP_USER bash -c "
-            sed -i 's|<value>file://.*</value>|<value>hdfs://localhost:9000/hbase</value>|' $HBASE_CONF_DIR/hbase-site.xml
+            sed -i 's|<value>file://.*</value>|<value>hdfs://$HOSTNAME:9000/hbase</value>|' $HBASE_CONF_DIR/hbase-site.xml
             sed -i 's|<value>false</value>|<value>true</value>|' $HBASE_CONF_DIR/hbase-site.xml
         "
         
@@ -303,8 +363,9 @@ main() {
     info "开始在Ubuntu 24.04上安装HBase ${HBASE_VERSION}..."
     replace_apt_sources
     update_system
+    configure_network
     check_hadoop
-    setup_user_and_dirs
+    setup_dirs
     download_and_install_hbase
     configure_hbase
     setup_environment
@@ -317,7 +378,8 @@ main() {
 
 # 执行主函数
 main
-````
+```
+
 
 ## 使用方法
 
